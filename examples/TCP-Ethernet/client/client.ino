@@ -25,7 +25,7 @@ ModbusEthernet mb;               // Declare ModbusTCP instance
 
 void setup() {
   Serial.begin(115200);     // Open serial communications and wait for port to open
-  #if defined(AVR_LEONARDO)
+  #ifdef AVR_LEONARDO
   while (!Serial) {}        // wait for serial port to connect. Needed for Leonardo only
   #endif
   Ethernet.init(17);         // SS pin

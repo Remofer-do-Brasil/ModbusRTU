@@ -1,4 +1,4 @@
-## Common API
+# Common API
 
 ```c
 void task();
@@ -71,7 +71,8 @@ void server(uint8_t slaveId);
 void slave(uint8_t slaveId); //Depricated
 ```
 
-Select and initialize master or slave mode to work. Switching between modes is not supported. Call is not returning error in this case but behaviour is unpredictible.
+Select and initialize master or slave mode to work. Switching between modes is not supported. Call is not returning error in this case but behaviour
+is unpredictible.
 
 ```c
 uint8_t server();
@@ -104,7 +105,8 @@ void dropTransactions();
 void autoConnect(bool enabled);
 ```
 
-Select behavior of executing read/write/pull/push. If autoConnect disabled (default) execution returns error if connection to slave is not already established. If autoConnect is enabled trying to establish connection during read/write/pull/push function call. Disabled by default.
+Select behavior of executing read/write/pull/push. If autoConnect disabled (default) execution returns error if connection to slave is not already
+established. If autoConnect is enabled trying to establish connection during read/write/pull/push function call. Disabled by default.
 
 ## Client API
 
@@ -168,7 +170,8 @@ uint16_t pushHreg(uint8_t slaveId, uint16_t to, uint16_t from, uint16_t numregs 
 uint16_t pushIregToHreg(uint8_t slaveId, uint16_t to, uint16_t from, uint16_t numregs = 1, cbTransaction cb = nullptr);
 ```
 
-Write Register/Coil or Write Multiple Registers/Coils Modbus function selected automaticly depending on 'numregs' value. [ip/to] - slave, [from] - local
+Write Register/Coil or Write Multiple Registers/Coils Modbus function selected automaticly depending on 'numregs' value. [ip/to] - slave, [from] -
+local
 
 ### Write [multiple] values to remote slave/servr reg[s]
 
@@ -205,32 +208,34 @@ void cbEnable(bool state = true);
 void cbDisable();
 ```
 
-Callback generation control. Callback generation is enabled by default. *Has no effect on transactions callbacks.*
+Callback generation control. Callback generation is enabled by default. _Has no effect on transactions callbacks._
 
 ```c
 void onConnect(cbModbusConnect cb);
 void onDisonnect(cbModbusConnect cb);
 ```
 
-*Modbus TCP Server* Assign callback function on new incoming connection event.
+_Modbus TCP Server_ Assign callback function on new incoming connection event.
 
 ```c
 typedef bool (*cbModbusConnect)(IPAddress ip);
 ```
 
-*Modbus TCP Sserver* Connect event callback function definition. For onConnect event client's IP address is passed as argument. onDisconnect callback function always gets INADDR_NONE as parameter.
+_Modbus TCP Sserver_ Connect event callback function definition. For onConnect event client's IP address is passed as argument. onDisconnect callback
+function always gets INADDR_NONE as parameter.
 
 ```c
 typedef uint16_t (*cbModbus)(TRegister* reg, uint16_t val);
 ```
 
-Get/Set register callback function definition. Pointer to TRegister structure (see source for details) of the register and new value are passed as arguments.
+Get/Set register callback function definition. Pointer to TRegister structure (see source for details) of the register and new value are passed as
+arguments.
 
 ```c
 typedef bool (*cbTransaction)(Modbus::ResultCode event, uint16_t transactionId, void* data);
 ```
 
-Transaction end callback function definition. For ModbusIP *data* is currently reserved. For Modbus RTU *transactionId* is also reserved.
+Transaction end callback function definition. For ModbusIP _data_ is currently reserved. For Modbus RTU _transactionId_ is also reserved.
 
 ```c
 uint32_t eventSource();
@@ -238,11 +243,12 @@ uint32_t eventSource();
 
 Should be called from onGet/onSet or transaction callback function.
 
-*Modbus TCP Client/Server* Returns IP address of remote requesting operation or INADDR_NONE for local. Use IPAddress(eventSource) to operate result as IPAddress type.
+_Modbus TCP Client/Server_ Returns IP address of remote requesting operation or INADDR_NONE for local. Use IPAddress(eventSource) to operate result as
+IPAddress type.
 
-*Note:* For transaction callback INADDR_NONE returned in case if transaction is timedout.
+_Note:_ For transaction callback INADDR_NONE returned in case if transaction is timedout.
 
-*Modbus RTU Master/Slave* Returns slave id. 
+_Modbus RTU Master/Slave_ Returns slave id.
 
 ```c
 bool onSetCoil(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
@@ -292,8 +298,7 @@ a.m.emelianov@gmail.com
 
 Original version:
 
-https://github.com/andresarmento/modbus-esp8266
-https://github.com/andresarmento/modbus-arduino
+https://github.com/andresarmento/modbus-esp8266 https://github.com/andresarmento/modbus-arduino
 
 prof (at) andresarmento (dot) com
 

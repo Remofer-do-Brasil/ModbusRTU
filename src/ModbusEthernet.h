@@ -14,31 +14,24 @@
 
 // Ethernet class wrapper to be able to compile for ESP32
 class EthernetServerWrapper : public EthernetServer {
-    public:
-    EthernetServerWrapper(uint16_t port) : EthernetServer(port) {
-
-    }
-    void begin(uint16_t port=0) {
-
-    }
+public:
+  EthernetServerWrapper(uint16_t port) : EthernetServer(port) {}
+  void begin(uint16_t port = 0) {}
 };
 
 class ModbusEthernet : public ModbusAPI<ModbusTCPTemplate<EthernetServerWrapper, EthernetClient>> {
-#if defined(MODBUSIP_USE_DNS)
-    private:
-    static IPAddress resolver (const char* host) {
-        DNSClient dns;
-        IPAddress ip;
-        
-        dns.begin(Ethernet.dnsServerIP());
-        if (dns.getHostByName(host, ip) == 1)
-            return ip;
-        else
-            return IPADDR_NONE;
-    }
-    public:
-    ModbusEthernet() : ModbusAPI() {
-        resolve = resolver;
-    }
+#ifdef MODBUSIP_USE_DNS
+private:
+  static IPAddress resolver(const char* host) {
+    DNSClient dns;
+    IPAddress ip;
+
+    dns.begin(Ethernet.dnsServerIP());
+    if (dns.getHostByName(host, ip) == 1) return ip;
+    else return IPADDR_NONE;
+  }
+
+public:
+  ModbusEthernet() : ModbusAPI() { resolve = resolver; }
 #endif
 };

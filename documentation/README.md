@@ -1,9 +1,10 @@
 # FAQ
 
-This library allows your Arduino board to communicate via Modbus protocol. The Modbus is a protocol
-used in industrial automation and also can be used in other areas, such as home automation.
+This library allows your Arduino board to communicate via Modbus protocol. The Modbus is a protocol used in industrial automation and also can be used
+in other areas, such as home automation.
 
-The Modbus generally uses serial RS-485 as physical layer (then called Modbus Serial) and TCP/IP via Ethernet or WiFi (Modbus TCP and Modbus TCP Security).
+The Modbus generally uses serial RS-485 as physical layer (then called Modbus Serial) and TCP/IP via Ethernet or WiFi (Modbus TCP and Modbus TCP
+Security).
 
 ---
 
@@ -25,7 +26,7 @@ The Modbus generally uses serial RS-485 as physical layer (then called Modbus Se
 
 ---
 
-## Server work cycle diagram 
+## Server work cycle diagram
 
 ![Server diagram](https://github.com/emelianov/modbus-esp8266/blob/master/resources/server.png)
 
@@ -41,7 +42,8 @@ Modbus standard defines only two types of data: bit value and 16-bit value. All 
 
 ## Value not read after `readCoil`/`readHreg`/etc
 
-The library is designed to execute calls async way. That is `readHreg()` function just sends read request to Modbus server device and exits. Responce is processed (as suun as it's arrive) by `task()`. `task()` is also async and exits if data hasn't arrive yet.  
+The library is designed to execute calls async way. That is `readHreg()` function just sends read request to Modbus server device and exits. Responce
+is processed (as suun as it's arrive) by `task()`. `task()` is also async and exits if data hasn't arrive yet.
 
 ---
 
@@ -49,9 +51,10 @@ The library is designed to execute calls async way. That is `readHreg()` functio
 
 ---
 
-## Transactional callback returns *0xE4* error
+## Transactional callback returns _0xE4_ error
 
-It's timeout error. Suggestions below are applicable to persistent errors or frequently errors. Rare timeout errors may be normal in some considerations.
+It's timeout error. Suggestions below are applicable to persistent errors or frequently errors. Rare timeout errors may be normal in some
+considerations.
 
 ### ModbusRTU
 
@@ -72,12 +75,14 @@ It maybe network problems. Use standard procedures as `ping` and firewall settin
 
 ## If it's possible to create ModbusTCP to ModbusRTU pass through bridge?
 
-Some ideas to implement full functional brodge may be taken from [this code](https://github.com/emelianov/modbus-esp8266/issues/101#issuecomment-755419095).
-Very limited implementation is available in [example](https://github.com/emelianov/modbus-esp8266/examples/bridge).
+Some ideas to implement full functional brodge may be taken from
+[this code](https://github.com/emelianov/modbus-esp8266/issues/101#issuecomment-755419095). Very limited implementation is available in
+[example](https://github.com/emelianov/modbus-esp8266/examples/bridge).
 
 ---
 
-# Modbus Library for Arduino
+## Modbus Library for Arduino
+
 ### ModbusRTU, ModbusTCP and ModbusTCP Security
 
 (c)2021 [Alexander Emelianov](mailto:a.m.emelianov@gmail.com)

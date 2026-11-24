@@ -19,22 +19,16 @@ using EthernetUDP = WiFiUDP;
 
 #include "ModbusTCPTemplate.h"
 
-
 class ModbusTCP : public ModbusAPI<ModbusTCPTemplate<WiFiServer, WiFiClient>> {
 #if defined(MODBUSIP_USE_DNS)
-  private:
-    static IPAddress resolver(const char *host) {
-        IPAddress remote_addr;
-        if (WiFi.hostByName(host, remote_addr))
-            return remote_addr;
-        return IPADDR_NONE;
-    }
+private:
+  static IPAddress resolver(const char* host) {
+    IPAddress remote_addr;
+    if (WiFi.hostByName(host, remote_addr)) return remote_addr;
+    return IPADDR_NONE;
+  }
 
-  public:
-    ModbusTCP() : ModbusAPI() {
-        resolve = resolver;
-    }
+public:
+  ModbusTCP() : ModbusAPI() { resolve = resolver; }
 #endif
 };
-
-

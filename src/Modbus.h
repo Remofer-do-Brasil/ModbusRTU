@@ -1,22 +1,24 @@
 /*
-    Modbus Library for Arduino
+    Modbus RTU library
     Core functions
     Copyright (C) 2014 André Sarmento Barbosa
                   2017-2022 Alexander Emelianov (a.m.emelianov@gmail.com)
 */
 #pragma once
-#include "Arduino.h"
 #include "ModbusSettings.h"
-#if defined(MODBUS_USE_STL)
 #include <algorithm>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <vector>
-#else
-#include "darray.h"
-#endif
 
-static inline uint16_t __swap_16(uint16_t num) { return (num >> 8) | (num << 8); }
+namespace modbus_detail {
+inline uint16_t readWord(const uint8_t* bytes) { return (uint16_t(bytes[0]) << 8) | bytes[1]; }
+inline void writeWord(uint8_t* bytes, uint16_t value) {
+  bytes[0] = uint8_t(value >> 8);
+  bytes[1] = uint8_t(value);
+}
+} // namespace modbus_detail
 
 #define COIL(addressValue)                                                                                                                           \
   (TAddress) { TAddress::COIL, addressValue }
@@ -37,11 +39,7 @@ static inline uint16_t __swap_16(uint16_t num) { return (num >> 8) | (num << 8);
 #define cbDefault nullptr
 
 struct TRegister;
-#ifdef MODBUS_USE_STL
 typedef std::function<uint16_t(TRegister* reg, uint16_t value)> cbModbus; // Callback function type
-#else
-typedef uint16_t (*cbModbus)(TRegister* reg, uint16_t value); // Callback function type
-#endif
 
 struct TAddress {
   enum RegType { COIL, ISTS, IREG, HREG };
@@ -93,7 +91,7 @@ struct TRegister {
 class Modbus {
 public:
   // Function Codes
-  enum FunctionCode {
+  enum FunctionCode : uint8_t {
     FC_READ_COILS = 0x01,      // Read Coils (Output) Status
     FC_READ_INPUT_STAT = 0x02, // Read Input Status (Discrete Inputs)
     FC_READ_REGS = 0x03,       // Read Holding Registers
@@ -110,7 +108,7 @@ public:
   };
   // Exception Codes
   // Custom result codes are used internally and by callbacks, but never in Modbus responses.
-  enum ResultCode {
+  enum ResultCode : uint8_t {
     EX_SUCCESS = 0x00,                  // Custom. No error
     EX_ILLEGAL_FUNCTION = 0x01,         // Function code is not supported
     EX_ILLEGAL_ADDRESS = 0x02,          // Output address does not exist
@@ -165,47 +163,25 @@ public:
   };
 
   struct frame_arg_t {
-    union {
-      bool toServer;
-      bool to_server; // Deprecated name retained for source compatibility.
-    };
-    union {
-      uint8_t slaveId;
-      struct {
-        uint8_t unitId;
-        union {
-          uint32_t ipAddress;
-          uint32_t ipaddr; // Deprecated name retained for source compatibility.
-        };
-        uint16_t transactionId;
-      };
-    };
-    frame_arg_t(uint8_t serverId, bool isServerResponse = false) {
-      slaveId = serverId;
-      toServer = isServerResponse;
-    };
-    frame_arg_t(uint8_t unitIdentifier, uint32_t remoteAddress, uint16_t transactionIdentifier, bool isServerResponse = false) {
-      unitId = unitIdentifier;
-      ipAddress = remoteAddress;
-      transactionId = transactionIdentifier;
-      toServer = isServerResponse;
-    };
+    uint8_t slaveId;
+    bool toServer;
   };
 
-  ~Modbus();
+  virtual ~Modbus() = default;
 
   void cbEnable(bool state = true);
   void cbDisable();
 
 private:
+  std::vector<TRegister>::iterator registerPosition(TAddress address);
   ResultCode readBits(TAddress startRegister, uint16_t registerCount, FunctionCode functionCode);
   ResultCode readWords(TAddress startRegister, uint16_t registerCount, FunctionCode functionCode);
 
   bool setMultipleBits(uint8_t* frame, TAddress startRegister, uint16_t outputCount);
-  bool setMultipleWords(uint16_t* frame, TAddress startRegister, uint16_t outputCount);
+  bool setMultipleWords(const uint8_t* frame, TAddress startRegister, uint16_t outputCount);
 
   void getMultipleBits(uint8_t* frame, TAddress startRegister, uint16_t registerCount);
-  void getMultipleWords(uint16_t* frame, TAddress startRegister, uint16_t registerCount);
+  void getMultipleWords(uint8_t* frame, TAddress startRegister, uint16_t registerCount);
 
   void bitsToBool(bool* dst, uint8_t* src, uint16_t registerCount);
   void boolToBits(uint8_t* dst, bool* src, uint16_t registerCount);
@@ -213,37 +189,11 @@ private:
 protected:
   // Reply Types
   enum ReplyCode { REPLY_OFF = 0x01, REPLY_ECHO = 0x02, REPLY_NORMAL = 0x03, REPLY_ERROR = 0x04, REPLY_UNEXPECTED = 0x05 };
-#if defined(MODBUS_USE_STL)
-#if defined(MODBUS_GLOBAL_REGS)
-  static std::vector<TRegister> _regs;
-  static std::vector<TCallback> _callbacks;
-#if defined(MODBUS_FILES)
-  static std::function<ResultCode(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)> _onFile;
-#endif
-#else
   std::vector<TRegister> _regs;
   std::vector<TCallback> _callbacks;
-#if defined(MODBUS_FILES)
   std::function<ResultCode(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)> _onFile;
-#endif
-#endif
-#else
-#if defined(MODBUS_GLOBAL_REGS)
-  static DArray<TRegister, 1, 1> _regs;
-  static DArray<TCallback, 1, 1> _callbacks;
-#if defined(MODBUS_FILES)
-  static ResultCode (*_onFile)(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*);
-#endif
-#else
-  DArray<TRegister, 1, 1> _regs;
-  DArray<TCallback, 1, 1> _callbacks;
-#if defined(MODBUS_FILES)
-  ResultCode (*_onFile)(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*) = nullptr;
-#endif
-#endif
-#endif
 
-  uint8_t* _frame = nullptr;
+  uint8_t _frame[MODBUS_MAX_FRAME]{};
   uint16_t _len = 0;
   uint8_t _reply = 0;
   bool cbEnabled = true;
@@ -285,13 +235,8 @@ public:
   bool removeOnGet(TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 
   virtual uint32_t eventSource() { return 0; }
-#if defined(MODBUS_USE_STL)
   typedef std::function<ResultCode(FunctionCode, const RequestData)> cbRequest; // Callback function Type
   typedef std::function<ResultCode(uint8_t*, uint8_t, void*)> cbRaw;            // Callback function Type
-#else
-  typedef ResultCode (*cbRequest)(FunctionCode functionCode, const RequestData data); // Callback function type
-  typedef ResultCode (*cbRaw)(uint8_t*, uint8_t, void*);                              // Callback function type
-#endif
 
 protected:
   cbRaw _cbRaw = nullptr;
@@ -301,21 +246,16 @@ protected:
 public:
   bool onRaw(cbRaw callbackFunction = nullptr);
   bool onRequest(cbRequest callbackFunction = _onRequestDefault);
-#if defined(MODBUSAPI_OPTIONAL)
+
 protected:
   cbRequest _onRequestSuccess = _onRequestDefault;
 
 public:
   bool onRequestSuccess(cbRequest callbackFunction = _onRequestDefault);
-#endif
 
-#if defined(MODBUS_FILES)
 public:
-#if defined(MODBUS_USE_STL)
   bool onFile(std::function<ResultCode(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)>);
-#else
-  bool onFile(ResultCode (*callbackFunction)(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*));
-#endif
+
 private:
   ResultCode fileOp(FunctionCode functionCode, uint16_t fileNum, uint16_t recNum, uint16_t recLen, uint8_t* frame);
 
@@ -333,28 +273,9 @@ protected:
   // count - number of records to include in a single request
   // functionCode - Modbus function code; expected to be 0x15
   // data - sequential set of data records
-#endif
 };
 
-#if defined(MODBUS_USE_STL)
 typedef std::function<bool(Modbus::ResultCode, uint16_t, void*)> cbTransaction; // Callback skeleton for requests
-#else
-typedef bool (*cbTransaction)(Modbus::ResultCode event, uint16_t transactionId, void* data); // Callback skeleton for requests
-#endif
 // typedef Modbus::ResultCode (*cbRequest)(Modbus::FunctionCode func, TRegister* reg, uint16_t regCount); // Callback function Type
-#if defined(MODBUS_FILES)
 // Callback skeleton for file read/write
-#if defined(MODBUS_USE_STL)
 typedef std::function<Modbus::ResultCode(Modbus::FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)> cbModbusFileOp;
-#else
-typedef Modbus::ResultCode (*cbModbusFileOp)(Modbus::FunctionCode functionCode, uint16_t fileNumber, uint16_t recordNumber, uint16_t recordLength,
-                                             uint8_t* frame);
-#endif
-#endif
-
-#if defined(ARDUINO_SAM_DUE_STL)
-// Arduino Due STL workaround
-namespace std {
-void __throw_bad_function_call();
-}
-#endif

@@ -1,313 +1,191 @@
-/*
-    Modbus Library for Arduino
-    ModbusRTU implementation
-    Copyright (C) 2019-2022 Alexander Emelianov (a.m.emelianov@gmail.com)
-        https://github.com/emelianov/modbus-esp8266
-        This code is licensed under the BSD New License. See LICENSE.txt for more info.
-*/
+// Copyright (C) 2019-2022 Alexander Emelianov. See LICENSE.txt.
 #include "ModbusRTU_PICO.h"
+#include "hardware/gpio.h"
+#include "pico/time.h"
+#include <utility>
 
-// Lookup table used to calculate the Modbus RTU CRC.
-static const uint16_t CRC_TABLE[] PROGMEM = {
-  0x0000, 0xC1C0, 0x81C1, 0x4001, 0x01C3, 0xC003, 0x8002, 0x41C2, 0x01C6, 0xC006, 0x8007, 0x41C7, 0x0005, 0xC1C5, 0x81C4, 0x4004, 0x01CC, 0xC00C,
-  0x800D, 0x41CD, 0x000F, 0xC1CF, 0x81CE, 0x400E, 0x000A, 0xC1CA, 0x81CB, 0x400B, 0x01C9, 0xC009, 0x8008, 0x41C8, 0x01D8, 0xC018, 0x8019, 0x41D9,
-  0x001B, 0xC1DB, 0x81DA, 0x401A, 0x001E, 0xC1DE, 0x81DF, 0x401F, 0x01DD, 0xC01D, 0x801C, 0x41DC, 0x0014, 0xC1D4, 0x81D5, 0x4015, 0x01D7, 0xC017,
-  0x8016, 0x41D6, 0x01D2, 0xC012, 0x8013, 0x41D3, 0x0011, 0xC1D1, 0x81D0, 0x4010, 0x01F0, 0xC030, 0x8031, 0x41F1, 0x0033, 0xC1F3, 0x81F2, 0x4032,
-  0x0036, 0xC1F6, 0x81F7, 0x4037, 0x01F5, 0xC035, 0x8034, 0x41F4, 0x003C, 0xC1FC, 0x81FD, 0x403D, 0x01FF, 0xC03F, 0x803E, 0x41FE, 0x01FA, 0xC03A,
-  0x803B, 0x41FB, 0x0039, 0xC1F9, 0x81F8, 0x4038, 0x0028, 0xC1E8, 0x81E9, 0x4029, 0x01EB, 0xC02B, 0x802A, 0x41EA, 0x01EE, 0xC02E, 0x802F, 0x41EF,
-  0x002D, 0xC1ED, 0x81EC, 0x402C, 0x01E4, 0xC024, 0x8025, 0x41E5, 0x0027, 0xC1E7, 0x81E6, 0x4026, 0x0022, 0xC1E2, 0x81E3, 0x4023, 0x01E1, 0xC021,
-  0x8020, 0x41E0, 0x01A0, 0xC060, 0x8061, 0x41A1, 0x0063, 0xC1A3, 0x81A2, 0x4062, 0x0066, 0xC1A6, 0x81A7, 0x4067, 0x01A5, 0xC065, 0x8064, 0x41A4,
-  0x006C, 0xC1AC, 0x81AD, 0x406D, 0x01AF, 0xC06F, 0x806E, 0x41AE, 0x01AA, 0xC06A, 0x806B, 0x41AB, 0x0069, 0xC1A9, 0x81A8, 0x4068, 0x0078, 0xC1B8,
-  0x81B9, 0x4079, 0x01BB, 0xC07B, 0x807A, 0x41BA, 0x01BE, 0xC07E, 0x807F, 0x41BF, 0x007D, 0xC1BD, 0x81BC, 0x407C, 0x01B4, 0xC074, 0x8075, 0x41B5,
-  0x0077, 0xC1B7, 0x81B6, 0x4076, 0x0072, 0xC1B2, 0x81B3, 0x4073, 0x01B1, 0xC071, 0x8070, 0x41B0, 0x0050, 0xC190, 0x8191, 0x4051, 0x0193, 0xC053,
-  0x8052, 0x4192, 0x0196, 0xC056, 0x8057, 0x4197, 0x0055, 0xC195, 0x8194, 0x4054, 0x019C, 0xC05C, 0x805D, 0x419D, 0x005F, 0xC19F, 0x819E, 0x405E,
-  0x005A, 0xC19A, 0x819B, 0x405B, 0x0199, 0xC059, 0x8058, 0x4198, 0x0188, 0xC048, 0x8049, 0x4189, 0x004B, 0xC18B, 0x818A, 0x404A, 0x004E, 0xC18E,
-  0x818F, 0x404F, 0x018D, 0xC04D, 0x804C, 0x418C, 0x0044, 0xC184, 0x8185, 0x4045, 0x0187, 0xC047, 0x8046, 0x4186, 0x0182, 0xC042, 0x8043, 0x4183,
-  0x0041, 0xC181, 0x8180, 0x4040, 0x0000
-};
-
-uint16_t ModbusRTUTemplate::crc16(uint8_t sourceAddress, uint8_t* frame, uint8_t pduLength) {
-  uint8_t index = 0xFF ^ sourceAddress;
-  uint16_t crcValue = pgm_read_word(CRC_TABLE + index);
-  uint8_t crcHighByte = 0xFF ^ highByte(crcValue);
-  uint8_t crcLowByte = lowByte(crcValue);
-  while (pduLength--) {
-    index = crcHighByte ^ *frame++;
-    crcValue = pgm_read_word(CRC_TABLE + index);
-    crcHighByte = crcLowByte ^ highByte(crcValue);
-    crcLowByte = lowByte(crcValue);
+namespace {
+uint16_t crc16(uint8_t address, const uint8_t* pdu, size_t size) {
+  uint16_t crc = 0xffff;
+  for (size_t i = 0; i <= size; ++i) {
+    crc ^= i == 0 ? address : pdu[i - 1];
+    for (unsigned bit = 0; bit < 8; ++bit) crc = (crc >> 1) ^ ((crc & 1) ? 0xa001 : 0);
   }
-  return (crcHighByte << 8) | crcLowByte;
-}
-/*
-uint16_t ModbusRTUTemplate::crc16_alt(uint8_t sourceAddress, uint8_t* frame, uint8_t pduLen) {
-  uint16_t temp, temp2, flag;
-  temp = 0xFFFF ^ sourceAddress;
-  for (uint8_t index = 0; index < pduLen; index++)
-  {
-    temp = temp ^ frame[index];
-    for (uint8_t bitIndex = 1; bitIndex <= 8; bitIndex++)
-    {
-      flag = temp & 0x0001;
-      temp >>= 1;
-      if (flag)
-        temp ^= 0xA001;
-    }
-  }
-  // Reverse byte order.
-  temp2 = temp >> 8;
-  temp = (temp << 8) | temp2;
-  temp &= 0xFFFF;
-  return temp;
-}
-*/
-
-uint32_t ModbusRTUTemplate::charSendTime(uint32_t baud, uint8_t characterBits) { return (uint32_t)characterBits * 1000000UL / baud; }
-
-uint32_t ModbusRTUTemplate::calculateMinimumInterFrameTime(uint32_t baud, uint8_t characterBits) {
-  // baud = baud rate of the serial port
-  // characterBits = size of one Modbus character (defined as 11 bits in the Modbus specification)
-  // Returns the minimum time between frames, defined as 3.5 character times in the Modbus specification.
-
-  // According to standard, the Modbus frame is always 11 bits long:
-  // 1 start + 8 data + 1 parity + 1 stop
-  // 1 start + 8 data + 2 stops
-  // The minimum time between frames is defined as 3.5 character times in the Modbus specification.
-  // This means the time between frames (in microseconds) should be calculated as follows:
-  // _interFrameDelay = 3.5 x 11 x 1000000 / baudrate = 38500000 / baudrate
-
-  // Example: at 9600 baud, _interFrameDelay = 38500000 / 9600 = 4010 microseconds.
-  // For baud rates greater than 19200, _interFrameDelay must be fixed at 1750 microseconds.
-
-  // For a nonstandard 10-bit Modbus frame (1 start + 8 data + 1 stop), set characterBits to 10.
-
-  if (baud > 19200) {
-    return 1750UL;
-  } else {
-    return 3.5 * charSendTime(baud, characterBits);
-  }
+  return crc;
 }
 
-// Retained for backward compatibility.
-void ModbusRTUTemplate::setBaudrate(uint32_t baud) { setInterFrameTime(calculateMinimumInterFrameTime(baud)); }
-
-void ModbusRTUTemplate::setInterFrameTime(uint32_t interFrameTimeUs) {
-  // Set the inter-frame time that task() waits before considering an RS-485 frame complete. If the value calculated by
-  // calculateMinimumInterFrameTime() is too short, set a more permissive value manually. The value is specified in microseconds. This can prevent a
-  // receiving server from splitting one frame into multiple fragments when the interval between bytes is unusually long.
-  _interFrameDelay = interFrameTimeUs;
-}
-
-bool ModbusRTUTemplate::begin(Stream* port, int16_t txPin, bool direct) {
-  _port = port;
-  _interFrameDelay = 1750UL;
-#if defined(MODBUSRTU_FLUSH_DELAY)
-  // A generic Stream does not expose its baud rate, so use the same 9600-baud fallback as the templated overload.
-  _characterSendTime = charSendTime(9600);
+bool validUartPin(uart_inst_t* uart, unsigned pin, bool rx) {
+  // The UART assignment repeats every 16 GPIOs. RP2350 adds TX/RX on the auxiliary function.
+#if PICO_RP2040
+  if (pin & 2u) return false;
 #endif
-  if (txPin >= 0) {
-    _txPin = txPin;
-    _direct = direct;
-    pinMode(_txPin, OUTPUT);
-    digitalWrite(_txPin, _direct ? LOW : HIGH);
+  return pin < NUM_BANK0_GPIOS && ((pin + 4) / 8) % 2 == uart_get_index(uart) && (pin & 1u) == unsigned(rx);
+}
+
+bool validControlPin(const ModbusUartConfig& config, int pin) {
+  return pin == -1 || (pin >= 0 && pin < NUM_BANK0_GPIOS && unsigned(pin) != config.txPin && unsigned(pin) != config.rxPin);
+}
+
+void configureOutput(int pin, bool level) {
+  if (pin < 0) return;
+  gpio_init(pin);
+  gpio_put(pin, level);
+  gpio_set_dir(pin, GPIO_OUT);
+}
+
+bool isBroadcastWrite(uint8_t function) {
+  switch (function) {
+    case Modbus::FC_WRITE_COIL:
+    case Modbus::FC_WRITE_REG:
+    case Modbus::FC_WRITE_COILS:
+    case Modbus::FC_WRITE_REGS:
+    case Modbus::FC_MASKWRITE_REG:
+    case Modbus::FC_WRITE_FILE_REC: return true;
+    default:                        return false;
   }
+}
+
+bool validRequestSize(const uint8_t* pdu, size_t size) {
+  switch (pdu[0]) {
+    case Modbus::FC_READ_COILS:
+    case Modbus::FC_READ_INPUT_STAT:
+    case Modbus::FC_READ_REGS:
+    case Modbus::FC_READ_INPUT_REGS:
+    case Modbus::FC_WRITE_COIL:
+    case Modbus::FC_WRITE_REG:       return size == 5;
+    case Modbus::FC_WRITE_COILS:
+    case Modbus::FC_WRITE_REGS:      return size >= 6 && size == 6u + pdu[5];
+    case Modbus::FC_MASKWRITE_REG:   return size == 7;
+    case Modbus::FC_READWRITE_REGS:  return size >= 10 && size == 10u + pdu[9];
+    case Modbus::FC_READ_FILE_REC:   return size >= 9 && (size - 2) % 7 == 0 && pdu[1] == size - 2;
+    case Modbus::FC_WRITE_FILE_REC:  return size >= 11 && pdu[1] == size - 2;
+    default:                         return true; // Custom function codes may be handled by onRaw.
+  }
+}
+} // namespace
+
+bool ModbusRTU::begin(const ModbusUartConfig& config) {
+  if (uart_ || (config.uart != uart0 && config.uart != uart1) || !config.baud || !validUartPin(config.uart, config.txPin, false) ||
+      !validUartPin(config.uart, config.rxPin, true) || !validControlPin(config, config.directionPin) ||
+      !validControlPin(config, config.receiverEnablePin) || (config.receiverEnablePin >= 0 && config.receiverEnablePin == config.directionPin) ||
+      (config.parity != UART_PARITY_NONE && config.parity != UART_PARITY_EVEN && config.parity != UART_PARITY_ODD))
+    return false;
+  auto baud = uart_init(config.uart, config.baud);
+  if (!baud) return false;
+  uart_ = config.uart;
+  uart_set_hw_flow(uart_, false, false);
+  uart_set_format(uart_, 8, config.parity == UART_PARITY_NONE ? 2 : 1, config.parity);
+  uart_set_fifo_enabled(uart_, true);
+  directionPin_ = config.directionPin;
+  transmitLevel_ = config.transmitLevel;
+  receiverEnablePin_ = config.receiverEnablePin;
+  receiveLevel_ = config.receiveLevel;
+  configureOutput(directionPin_, !transmitLevel_);
+  configureOutput(receiverEnablePin_, receiveLevel_);
+  gpio_set_function(config.txPin, UART_FUNCSEL_NUM(uart_, config.txPin));
+  gpio_set_function(config.rxPin, UART_FUNCSEL_NUM(uart_, config.rxPin));
+  interCharacterUs_ = config.baud > 19200 ? 750 : (16500000u + baud - 1) / baud;
+  // RX timestamps mark completed characters, so two arrivals include one character on the wire.
+  interCharacterUs_ += (11000000u + baud - 1) / baud;
+  interFrameUs_ = config.baud > 19200 ? 1750 : (38500000u + baud - 1) / baud;
+  lastActivity_ = time_us_64();
   return true;
 }
 
-bool ModbusRTUTemplate::rawSend(uint8_t slaveId, uint8_t* frame, uint8_t len) {
-  uint16_t newCrc = crc16(slaveId, frame, len);
-#if defined(MODBUSRTU_DEBUG)
-  for (uint8_t index = 0; index < _len; index++) {
-    Serial.print(_frame[index], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
-#endif
-#if defined(MODBUSRTU_REDE)
-  if (_txPin >= 0 || _rxPin >= 0) {
-    if (_txPin >= 0) digitalWrite(_txPin, _direct ? HIGH : LOW);
-    if (_rxPin >= 0) digitalWrite(_rxPin, _direct ? HIGH : LOW);
-#if !defined(ESP32) || !defined(PICO_RP2040) || !defined(PICO_RP2350)
-    delayMicroseconds(MODBUSRTU_REDE_SWITCH_US);
-#endif
-  }
-#else
-  if (_txPin >= 0) {
-    digitalWrite(_txPin, _direct ? HIGH : LOW);
-#if !defined(ESP32) || !defined(PICO_RP2040) || !defined(PICO_RP2350)
-    delayMicroseconds(MODBUSRTU_REDE_SWITCH_US);
-#endif
-  }
-#endif
-#if defined(ESP32)
-  vTaskDelay(0);
-#endif
-  _port->write(slaveId);       // Send slaveId
-  _port->write(frame, len);    // Send PDU
-  _port->write(newCrc >> 8);   // Send CRC
-  _port->write(newCrc & 0xFF); // Send CRC
-  _port->flush();
-#if defined(MODBUSRTU_REDE)
-  if (_txPin >= 0 || _rxPin >= 0) {
-#if defined(MODBUSRTU_FLUSH_DELAY)
-    delayMicroseconds(_characterSendTime * MODBUSRTU_FLUSH_DELAY);
-#endif
-    if (_txPin >= 0) digitalWrite(_txPin, _direct ? LOW : HIGH);
-    if (_rxPin >= 0) digitalWrite(_rxPin, _direct ? LOW : HIGH);
-  }
-#else
-  if (_txPin >= 0) {
-#if defined(MODBUSRTU_FLUSH_DELAY)
-    delayMicroseconds(_characterSendTime * MODBUSRTU_FLUSH_DELAY);
-#endif
-    digitalWrite(_txPin, _direct ? LOW : HIGH);
-  }
-#endif
-  return true;
+void ModbusRTU::setDirection(bool transmitting) {
+  if (receiverEnablePin_ >= 0) gpio_put(receiverEnablePin_, transmitting ? !receiveLevel_ : receiveLevel_);
+  if (directionPin_ >= 0) gpio_put(directionPin_, transmitting ? transmitLevel_ : !transmitLevel_);
 }
 
-uint16_t
-ModbusRTUTemplate::send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
-  (void)unit; // A Modbus RTU frame has no TCP unit-identifier field.
-  bool result = false;
-  if ((!isMaster || !_slaveId) && _len && _frame) { // Check if waiting for previous request result and _frame filled
-                                                    // if (_len && _frame) { // Check if waiting for previous request result and _frame filled
-    rawSend(slaveId, _frame, _len);
-    if (waitResponse && slaveId) {
-      _slaveId = slaveId;
-      _timestamp = micros();
-      _transactionCallback = callbackFunction;
-      _data = data;
-      _sentFrame = _frame;
-      _sentReg = startRegister;
-      _frame = nullptr;
-    }
-    result = true;
-  }
-  free(_frame);
-  _frame = nullptr;
-  _len = 0;
-  return result;
+void ModbusRTU::transmit(uint8_t id) {
+  const auto crc = crc16(id, _frame, _len);
+  const uint8_t trailer[] = { uint8_t(crc), uint8_t(crc >> 8) };
+  setDirection(true);
+  uart_write_blocking(uart_, &id, 1);
+  uart_write_blocking(uart_, _frame, _len);
+  uart_write_blocking(uart_, trailer, sizeof(trailer));
+  uart_tx_wait_blocking(uart_);
+  setDirection(false);
+  lastActivity_ = time_us_64();
 }
 
-void ModbusRTUTemplate::task() {
-#if defined(ESP32)
-  vTaskDelay(0);
-#endif
-  if (_port->available() > _len) {
-    _len = _port->available();
-    lastByteTimestamp = micros();
+uint16_t ModbusRTU::send(uint8_t id, TAddress reg, cbTransaction callback, uint8_t* output, bool waitResponse) {
+  if (!uart_ || id > 247 || !_len || _len > MODBUS_MAX_FRAME || (waitResponse && !clientMode_) || (clientMode_ && address_)) return 0;
+  if (!id && (!waitResponse || !isBroadcastWrite(_frame[0]))) return 0;
+  if (waitResponse && !validRequestSize(_frame, _len)) return 0;
+  if (received_ || uart_is_readable(uart_)) return 0;
+  busy_wait_until(from_us_since_boot(lastActivity_ + interFrameUs_));
+  if (uart_is_readable(uart_)) return 0;
+  transmit(id);
+  if (waitResponse && id) {
+    address_ = id;
+    deadline_ = lastActivity_ + 1000000;
+    callback_ = std::move(callback);
+    output_ = output;
+    register_ = reg;
+    requestSize_ = _len;
+    memcpy(request_, _frame, _len);
   }
-  if (_len == 0) {
-    if (isMaster) cleanup();
-    return;
-  }
-  if (isMaster) {
-    if (micros() - lastByteTimestamp < _interFrameDelay) {
-      return;
-    }
-  } else { // In server mode, wait for the complete message unless MODBUSRTU_MAX_READ_US is reached.
-    uint32_t taskStart = micros();
-    while (micros() - lastByteTimestamp < _interFrameDelay) { // Wait for the required silent interval between frames.
-      if (_port->available() > _len) {
-        _len = _port->available();
-        lastByteTimestamp = micros();
-      }
-      if (micros() - taskStart > MODBUSRTU_MAX_READ_US) { // Prevent task() from blocking for too long.
-        return;
-      }
-    }
-  }
-
-  bool validFrame = true;
-  sourceAddress = _port->read();   // The first byte contains the server identifier.
-  _len--;                          // Exclude the server-identifier byte.
-  if (isMaster && _slaveId == 0) { // Check whether a server identifier is set.
-    validFrame = false;
-  }
-  if (sourceAddress != MODBUSRTU_BROADCAST && sourceAddress != _slaveId) { // Validate the server identifier.
-    validFrame = false;
-  }
-  if (!validFrame && !_cbRaw) {
-    for (uint8_t index = 0; index < _len; index++) _port->read(); // Discard a packet whose server identifier does not match.
-    _len = 0;
-    if (isMaster) cleanup();
-    return;
-  }
-
-  free(_frame); // Just in case
-  _frame = (uint8_t*)malloc(_len);
-  if (!_frame) {                                                  // Failed to allocate the buffer.
-    for (uint8_t index = 0; index < _len; index++) _port->read(); // Discard the packet.
-    _len = 0;
-    if (isMaster) cleanup();
-    return;
-  }
-  for (uint8_t index = 0; index < _len; index++) {
-    _frame[index] = _port->read(); // read data + crc
-#if defined(MODBUSRTU_DEBUG)
-    Serial.print(_frame[index], HEX);
-    Serial.print(" ");
-#endif
-  }
-#if defined(MODBUSRTU_DEBUG)
-  Serial.println();
-#endif
-  //_port->readBytes(_frame, _len);
-  uint16_t frameCrc = ((_frame[_len - 2] << 8) | _frame[_len - 1]); // The last two bytes contain the CRC.
-  _len = _len - 2;                                                  // Exclude the two CRC bytes.
-  if (frameCrc != crc16(sourceAddress, _frame, _len)) {             // Validate the CRC.
-    goto cleanup;
-  }
-  _reply = EX_PASSTHROUGH;
-  if (_cbRaw) {
-    frame_arg_t frameContext = { sourceAddress, !isMaster };
-    _reply = _cbRaw(_frame, _len, (void*)&frameContext);
-  }
-  if (!validFrame && _reply != EX_FORCE_PROCESS) {
-    goto cleanup;
-  }
-  if (isMaster) {
-    if ((_frame[0] & 0x7F) == _sentFrame[0]) { // Check whether the function code matches the request.
-      // Process the incoming frame as a client.
-      if (_reply == EX_PASSTHROUGH || _reply == EX_FORCE_PROCESS) masterPDU(_frame, _sentFrame, _sentReg, _data);
-      if (_transactionCallback) {
-        _transactionCallback((ResultCode)_reply, 0, nullptr);
-        _transactionCallback = nullptr;
-      }
-      free(_sentFrame);
-      _sentFrame = nullptr;
-      _data = nullptr;
-      _slaveId = 0;
-    }
-    _reply = Modbus::REPLY_OFF; // A client does not send another reply.
-  } else {
-    if (_reply == EX_PASSTHROUGH || _reply == EX_FORCE_PROCESS) {
-      slavePDU(_frame);
-      if (sourceAddress == MODBUSRTU_BROADCAST) _reply = Modbus::REPLY_OFF; // Do not reply to broadcasts.
-      if (_reply != Modbus::REPLY_OFF) rawSend(sourceAddress, _frame, _len);
-    }
-  }
-  // Cleanup
-cleanup:
-  free(_frame);
-  _frame = nullptr;
-  _len = 0;
-  if (isMaster) cleanup();
+  return 1;
 }
 
-bool ModbusRTUTemplate::cleanup() {
-  // Remove a timed-out request or forced event.
-  if (_slaveId && (micros() - _timestamp > MODBUSRTU_TIMEOUT_US)) {
-    if (_transactionCallback) {
-      _transactionCallback(Modbus::EX_TIMEOUT, 0, nullptr);
-      _transactionCallback = nullptr;
+void ModbusRTU::finishTransaction(ResultCode result) {
+  auto callback = std::move(callback_);
+  address_ = 0;
+  output_ = nullptr;
+  if (callback) callback(result, 0, nullptr);
+}
+
+void ModbusRTU::processFrame() {
+  const size_t size = received_;
+  received_ = 0;
+  if (std::exchange(discard_, false) || size < 4) return;
+  const auto id = rx_[0];
+  uint8_t* pdu = rx_ + 1;
+  _len = size - 3;
+  if (crc16(id, pdu, _len) != (rx_[size - 2] | (rx_[size - 1] << 8))) return;
+  if (id > 247 || (!id && (clientMode_ || !isBroadcastWrite(pdu[0])))) return;
+  bool addressed = address_ && (id == address_ || id == 0);
+  if (!addressed && !_cbRaw) return;
+  source_ = id;
+  frame_arg_t context{ id, !clientMode_ };
+  auto action = _cbRaw ? _cbRaw(pdu, _len, &context) : EX_PASSTHROUGH;
+  if (!addressed && action != EX_FORCE_PROCESS) return;
+  _len = size - 3;
+  if (clientMode_) {
+    if (!address_ || (pdu[0] & 0x7f) != request_[0]) return;
+    if (action == EX_PASSTHROUGH || action == EX_FORCE_PROCESS) {
+      if (pdu[0] & 0x80) {
+        action = _len == 2 ? ResultCode(pdu[1]) : EX_DATA_MISMATCH;
+      } else if (isBroadcastWrite(pdu[0])) {
+        size_t echoSize = (pdu[0] == FC_WRITE_REGS || pdu[0] == FC_WRITE_COILS) ? 5 : requestSize_;
+        action = _len == echoSize && !memcmp(request_, pdu, echoSize) ? EX_SUCCESS : EX_DATA_MISMATCH;
+      } else if (_len >= 2 && pdu[1] == _len - 2) {
+        masterPDU(pdu, request_, register_, output_);
+        action = ResultCode(_reply);
+      } else action = EX_DATA_MISMATCH;
     }
-    free(_sentFrame);
-    _sentFrame = nullptr;
-    _data = nullptr;
-    _slaveId = 0;
-    return true;
+    finishTransaction(action);
+  } else if (action == EX_PASSTHROUGH || action == EX_FORCE_PROCESS) {
+    memcpy(_frame, pdu, _len); // Echo responses use the original request.
+    if (validRequestSize(pdu, _len)) slavePDU(pdu);
+    else exceptionResponse(FunctionCode(pdu[0]), EX_ILLEGAL_VALUE);
+    if (id && _reply != REPLY_OFF) transmit(id);
   }
-  return false;
+}
+
+void ModbusRTU::task() {
+  if (!uart_) return;
+  auto now = time_us_64();
+  if (received_ && now - lastActivity_ >= interFrameUs_) processFrame();
+  while (uart_is_readable(uart_)) {
+    now = time_us_64();
+    // PL011 reports framing, parity, break and overrun in bits 8..11 of DR.
+    auto data = uart_get_hw(uart_)->dr;
+    if ((data & 0xf00) || (received_ && now - lastActivity_ > interCharacterUs_)) discard_ = true;
+    if (received_ < sizeof(rx_)) rx_[received_++] = uint8_t(data);
+    else discard_ = true;
+    lastActivity_ = now;
+  }
+  if (clientMode_ && address_ && time_us_64() >= deadline_) finishTransaction(EX_TIMEOUT);
 }

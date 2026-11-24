@@ -1,95 +1,159 @@
-/*
-    Modbus Library for Arduino
-        ModbusRTU
-    Copyright (C) 2019-2022 Alexander Emelianov (a.m.emelianov@gmail.com)
-        https://github.com/emelianov/modbus-esp8266
-        This code is licensed under the BSD New License. See LICENSE.txt for more info.
-*/
+// Copyright (C) 2019-2022 Alexander Emelianov. See LICENSE.txt.
 #pragma once
-#include "ModbusAPI.h"
 
-class ModbusRTUTemplate : public Modbus {
-protected:
-  Stream* _port;
-  int16_t _txPin = -1;
-#ifdef MODBUSRTU_REDE
-  int16_t _rxPin = -1;
-#endif
-  bool _direct = true;       // Transmit control logic (true=direct, false=inverse)
-  uint32_t _interFrameDelay; // Inter-frame delay in microseconds.
-#ifdef MODBUSRTU_FLUSH_DELAY
-  uint32_t _characterSendTime; // Character transmission time.
-#endif
-  uint32_t lastByteTimestamp = 0;
-  bool isMaster = false;
-  uint8_t _slaveId;
-  uint32_t _timestamp = 0;
-  cbTransaction _transactionCallback = nullptr;
-  uint8_t* _data = nullptr;
-  uint8_t* _sentFrame = nullptr;
-  TAddress _sentReg = COIL(0);
-  uint8_t sourceAddress = 0;
+#include "Modbus.h"
+#include "hardware/uart.h"
 
-  uint16_t send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr,
-                bool waitResponse = true);
-  // Prepare and send a Modbus RTU frame. The _frame buffer and _len must contain the Modbus data.
-  // slaveId - server identifier
-  // startRegister - first local register in which to store returned data; ignored for writes to a server
-  // callbackFunction - transaction callback function
-  // data - if not null, store returned data in this buffer instead of local registers
-  bool rawSend(uint8_t slaveId, uint8_t* frame, uint8_t len);
-  bool cleanup(); // Remove timed-out transactions.
-  uint16_t crc16(uint8_t address, uint8_t* frame, uint8_t pduLength);
-  uint16_t crc16_alt(uint8_t address, uint8_t* frame, uint8_t pduLen);
-
-public:
-  void setBaudrate(uint32_t baud = -1);
-  uint32_t calculateMinimumInterFrameTime(uint32_t baud, uint8_t characterBits = 11);
-  void setInterFrameTime(uint32_t interFrameTimeUs);
-  uint32_t charSendTime(uint32_t baud, uint8_t characterBits = 11);
-  template <class PortType> bool begin(PortType* port, int16_t txPin = -1, bool direct = true);
-#if defined(MODBUSRTU_REDE)
-  template <class PortType> bool begin(PortType* port, int16_t txPin, int16_t rxPin, bool direct);
-#endif
-  bool begin(Stream* port, int16_t txPin = -1, bool direct = true);
-  void task();
-  void client() { isMaster = true; };
-  inline void master() { client(); }
-  void server(uint8_t serverId) { _slaveId = serverId; };
-  inline void slave(uint8_t slaveId) { server(slaveId); }
-  uint8_t server() { return _slaveId; }
-  inline uint8_t slave() { return server(); }
-  uint32_t eventSource() override { return sourceAddress; }
+struct ModbusUartConfig {
+  uart_inst_t* uart;
+  unsigned txPin;
+  unsigned rxPin;
+  uint32_t baud;
+  uart_parity_t parity = UART_PARITY_EVEN; // NONE selects two stop bits
+  int directionPin = -1;                   // Optional RS-485 DE or tied DE and /RE
+  bool transmitLevel = true;
+  int receiverEnablePin = -1; // Optional separate /RE (active low)
+  bool receiveLevel = false;
 };
 
-template <class PortType> bool ModbusRTUTemplate::begin(PortType* port, int16_t txPin, bool direct) {
-  uint32_t baud = 0;
-#if defined(ESP32) || defined(ESP8266) // baudRate() only available with ESP32+ESP8266
-  baud = port->baudRate();
-#else
-  baud = 9600;
-#endif
-  setInterFrameTime(calculateMinimumInterFrameTime(baud));
-#if defined(MODBUSRTU_FLUSH_DELAY)
-  _characterSendTime = charSendTime(baud);
-#endif
-  _port = port;
-  if (txPin >= 0) {
-    _txPin = txPin;
-    _direct = direct;
-    pinMode(_txPin, OUTPUT);
-    digitalWrite(_txPin, _direct ? LOW : HIGH);
+class ModbusRTU : public Modbus {
+public:
+  ModbusRTU() = default;
+  ModbusRTU(const ModbusRTU&) = delete;
+  ModbusRTU& operator=(const ModbusRTU&) = delete;
+
+  bool begin(const ModbusUartConfig& config);
+  void task();
+  void client() {
+    if (!address_) clientMode_ = true;
   }
-  return true;
-}
-#if defined(MODBUSRTU_REDE)
-template <class PortType> bool ModbusRTUTemplate::begin(PortType* port, int16_t txPin, int16_t rxPin, bool direct) {
-  begin(port, txPin, direct);
-  if (rxPin > 0) {
-    _rxPin = rxPin;
-    pinMode(_rxPin, OUTPUT);
-    digitalWrite(_rxPin, _direct ? LOW : HIGH);
+  bool server(uint8_t id) {
+    if (clientMode_ || !id || id > 247) return false;
+    address_ = id;
+    return true;
   }
-}
-#endif
-class ModbusRTU : public ModbusAPI<ModbusRTUTemplate> {};
+  uint8_t server() const { return address_; }
+  uint32_t eventSource() override { return source_; }
+
+  bool Hregs(uint16_t offset, uint16_t* value, uint16_t registerCount = 1) { return this->Reg(HREG(offset), value, registerCount); }
+  bool Coils(uint16_t offset, bool* value, uint16_t registerCount = 1) {
+    if (!value || uint32_t(offset) + registerCount > 65536) return false;
+    for (unsigned i = 0; i < registerCount; ++i)
+      if (!Coil(offset + i, value[i])) return false;
+    return true;
+  }
+  bool Istss(uint16_t offset, bool* value, uint16_t registerCount = 1) {
+    if (!value || uint32_t(offset) + registerCount > 65536) return false;
+    for (unsigned i = 0; i < registerCount; ++i)
+      if (!Ists(offset + i, value[i])) return false;
+    return true;
+  }
+  bool Iregs(uint16_t offset, uint16_t* value, uint16_t registerCount = 1) { return this->Reg(IREG(offset), value, registerCount); }
+
+  bool addHreg(uint16_t offset, uint16_t value = 0, uint16_t registerCount = 1);
+  bool addCoil(uint16_t offset, bool value = false, uint16_t registerCount = 1);
+  bool addIsts(uint16_t offset, bool value = false, uint16_t registerCount = 1);
+  bool addIreg(uint16_t offset, uint16_t value = 0, uint16_t registerCount = 1);
+
+  bool Hreg(uint16_t offset, uint16_t value);
+  bool Coil(uint16_t offset, bool value);
+  bool Ists(uint16_t offset, bool value);
+  bool Ireg(uint16_t offset, uint16_t value);
+
+  bool Coil(uint16_t offset);
+  bool Ists(uint16_t offset);
+  uint16_t Ireg(uint16_t offset);
+  uint16_t Hreg(uint16_t offset);
+
+  bool removeCoil(uint16_t offset, uint16_t registerCount = 1);
+  bool removeIsts(uint16_t offset, uint16_t registerCount = 1);
+  bool removeIreg(uint16_t offset, uint16_t registerCount = 1);
+  bool removeHreg(uint16_t offset, uint16_t registerCount = 1);
+
+  bool onGetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+
+  bool removeOnGetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+
+  uint16_t writeCoil(uint8_t target, uint16_t offset, bool value, cbTransaction callbackFunction = nullptr);
+  uint16_t writeCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t readCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t value, cbTransaction callbackFunction = nullptr);
+  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t readIsts(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t readHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t readIreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+
+  uint16_t pushCoil(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullCoil(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullIsts(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pushHreg(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullHreg(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullIreg(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+
+  uint16_t
+  pullHregToIreg(uint8_t target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t
+  pullCoilToIsts(uint8_t target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pushIstsToCoil(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pushIregToHreg(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+
+  uint16_t readFileRec(uint8_t slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction = nullptr);
+  uint16_t writeFileRec(uint8_t slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction = nullptr);
+
+  uint16_t maskHreg(uint8_t slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction = nullptr);
+  uint16_t readWriteHreg(uint8_t slaveId, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
+                         uint16_t* writeValue, uint16_t writeRegisterCount, cbTransaction callbackFunction = nullptr);
+
+  uint16_t rawRequest(uint8_t target, uint8_t* data, uint16_t len, cbTransaction callbackFunction = nullptr);
+  uint16_t rawResponse(uint8_t target, uint8_t* data, uint16_t len);
+  uint16_t errorResponse(uint8_t target, Modbus::FunctionCode functionCode, Modbus::ResultCode exceptionCode);
+
+  // Deprecated misspellings retained for source compatibility.
+  uint16_t rawResponce(uint8_t target, uint8_t* data, uint16_t len) { return rawResponse(target, data, len); }
+  uint16_t errorResponce(uint8_t target, Modbus::FunctionCode functionCode, Modbus::ResultCode exceptionCode) {
+    return errorResponse(target, functionCode, exceptionCode);
+  }
+
+private:
+  uint16_t send(uint8_t id, TAddress reg, cbTransaction callback, uint8_t* output = nullptr, bool waitResponse = true);
+
+  void setDirection(bool transmitting);
+  void transmit(uint8_t id);
+  void processFrame();
+  void finishTransaction(ResultCode result);
+
+  uart_inst_t* uart_ = nullptr;
+  int directionPin_ = -1;
+  bool transmitLevel_ = true;
+  int receiverEnablePin_ = -1;
+  bool receiveLevel_ = false;
+  uint32_t interFrameUs_ = 0;
+  uint32_t interCharacterUs_ = 0;
+  uint64_t lastActivity_ = 0;
+  uint8_t rx_[MODBUS_MAX_FRAME + 3]{};
+  size_t received_ = 0;
+  bool discard_ = false;
+  bool clientMode_ = false;
+  uint8_t address_ = 0;
+  uint8_t source_ = 0;
+  uint64_t deadline_ = 0;
+  cbTransaction callback_;
+  uint8_t* output_ = nullptr;
+  uint8_t request_[MODBUS_MAX_FRAME]{};
+  size_t requestSize_ = 0;
+  TAddress register_{};
+};

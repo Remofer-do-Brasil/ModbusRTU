@@ -1,6 +1,6 @@
 /*
-  Modbus-Arduino Example - Publish multiple DI as coils (Modbus IP ESP8266/ESP32)
-  
+  Modbus-Arduino Example - Publish multiple digital inputs as coils (Modbus IP ESP8266/ESP32)
+
   Original library
   Copyright by André Sarmento Barbosa
   http://github.com/andresarmento/modbus-arduino
@@ -14,38 +14,36 @@
   https://github.com/sndnvaps/modbus-pico
 */
 
-
 #include <WiFi.h>
 
 #include <ModbusIP_PICO.h>
 
-
 uint8_t pinList[] = { 12, 13, 14, 15, 16, 17, 18, 19, 21, 22 };
 
-#define LEN sizeof(pinList) / sizeof(uint8_t)
+#define LEN       sizeof(pinList) / sizeof(uint8_t)
 #define COIL_BASE 0
-//ModbusIP object
-ModbusIP mb;
+// ModbusIP object.
+ModbusIP modbus;
 
-// Callback function to read corresponding DI
-uint16_t cbRead(TRegister* reg, uint16_t val) {
-  // Checking value of register address which callback is called on.
-  // See Modbus.h for TRegister and TAddress definition
-  if (reg->address.address < COIL_BASE)
-    return 0;
+// Callback that reads the corresponding digital input.
+uint16_t cbRead(TRegister* reg, uint16_t value) {
+  (void)value;
+  // Check the address of the register that triggered the callback.
+  // See Modbus.h for the TRegister and TAddress definitions.
+  if (reg->address.address < COIL_BASE) return 0;
   uint8_t offset = reg->address.address - COIL_BASE;
-  if (offset >= LEN)
-    return 0;
+  if (offset >= LEN) return 0;
   return COIL_VAL(digitalRead(pinList[offset]));
 }
-// Callback function to write-protect DI
-uint16_t cbWrite(TRegister* reg, uint16_t val) {
+// Preserve the current value to make the mapped digital inputs read-only.
+uint16_t cbWrite(TRegister* reg, uint16_t value) {
+  (void)value;
   return reg->value;
 }
 
 // Callback function for client connect. Returns true to allow connection.
-bool cbConn(IPAddress ip) {
-  Serial.println(ip);
+bool cbConn(IPAddress localIpAddress) {
+  Serial.println(localIpAddress);
   return true;
 }
 
@@ -63,18 +61,17 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  for (uint8_t i = 0; i < LEN; i++)
-    pinMode(pinList[i], INPUT);
-  mb.onConnect(cbConn);  // Add callback on connection event
-  mb.server();
+  for (uint8_t pinIndex = 0; pinIndex < LEN; pinIndex++) pinMode(pinList[pinIndex], INPUT);
+  modbus.onConnect(cbConn); // Assign the connection callback.
+  modbus.server();
 
-  mb.addCoil(COIL_BASE, COIL_VAL(false), LEN);  // Add Coils.
-  mb.onGetCoil(COIL_BASE, cbRead, LEN);         // Add single callback for multiple Coils. It will be called for each of these coils value get
-  mb.onSetCoil(COIL_BASE, cbWrite, LEN);        // The same as above just for set value
+  modbus.addCoil(COIL_BASE, COIL_VAL(false), LEN); // Add the coils.
+  modbus.onGetCoil(COIL_BASE, cbRead, LEN);        // Assign one read callback to all coils in the range.
+  modbus.onSetCoil(COIL_BASE, cbWrite, LEN);       // Assign one write callback to all coils in the range.
 }
 
 void loop() {
-  //Call once inside loop() - all magic here
-  mb.task();
+  // Process Modbus events once per loop iteration.
+  modbus.task();
   delay(10);
 }

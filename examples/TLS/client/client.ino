@@ -2,7 +2,7 @@
   Modbus-Uni - Most complete Modbus Library for Arduino
 
   Modbus/TCP Security Client for ESP8266 Example
-  
+
   (c)2020 Alexander Emelianov (a.m.emelianov@gmail.com)
   https://github.com/emelianov/modbus-esp8266
   This code is licensed under the BSD New License. See LICENSE.txt for more info.
@@ -15,12 +15,12 @@
 #else
 #error Platform is not supported
 #endif
-#include <time.h>
 #include <ModbusTLS.h>
+#include <time.h>
 
 // The hardcoded certificate authority for this example.
-// Don't use it on your own apps!!!!!
-const char ca_cert[] PROGMEM = R"EOF(
+// Example certificate only. Replace it before using this code in an application.
+const char caCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICwjCCAaqgAwIBAgIUTz9NFtf8JkdIkrDroXVB/ANtqlYwDQYJKoZIhvcNAQEL
 BQAwEjEQMA4GA1UEAwwHcm9vdF9jYTAeFw0yMDA4MjcxMDI4MzFaFw0zMTExMTQx
@@ -41,7 +41,7 @@ yHObfUNN6saco1/f4OM4tzaQOKa+6U1iXVBTBjE2IHPchGqctBk=
 )EOF";
 
 // The client's private key which must be kept secret
-const char client_private_key[] PROGMEM = R"EOF(
+const char clientPrivateKey[] PROGMEM = R"EOF(
 -----BEGIN RSA PRIVATE KEY-----
 MIIEpQIBAAKCAQEAyFOAs6+OSYI+04lGxdDErOMnQuNUf6wdnUpcHG65o5mR5SZ9
 n4n3FQgbkB+Gv0gm1DQzl89t6djWR3i6XB1fE3rrw6HJqZSSLijaDfAT23mfiEuc
@@ -72,7 +72,7 @@ x7M6SvzBWzC7gzH/P94LxtqM22zzU0LszocV2j1UkxqBVXv0EYVjPB0=
 )EOF";
 
 // The server's public certificate which must be shared
-const char client_cert[] PROGMEM = R"EOF(
+const char clientCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICqjCCAZICFEIh1S7CewqVDZ9B78fSCkMQDkN9MA0GCSqGSIb3DQEBCwUAMBIx
 EDAOBgNVBAMMB3Jvb3RfY2EwHhcNMjAwODI3MTAyODMxWhcNMzEwODEwMTAyODMx
@@ -93,7 +93,7 @@ hJmblVkcv6VRNS9JHDQ=
 )EOF";
 
 // The server's public certificate which must be shared
-const char server_pk[] PROGMEM = R"EOF(
+const char serverPublicKey[] PROGMEM = R"EOF(
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3SpcCq8sUhAbBztc+X69
 H+miV/Dxw9SH7X5Gtz09vOcEaDQnD2uXk6OXQUsiTPSYCqahrHZtjO1AQCWQBQUo
@@ -105,14 +105,13 @@ iQIDAQAB
 -----END PUBLIC KEY-----
 )EOF";
 
-//Modbus Registers Offsets
+// Modbus register offsets.
 const int LED_COIL = 100;
 
-//ModbusIP object
-ModbusTLS mb;
+// Modbus TLS object.
+ModbusTLS modbus;
 // Set time via NTP, as required for x.509 validation
-void setClock()
-{
+void setClock() {
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
   Serial.print("Waiting for NTP time sync: ");
@@ -128,34 +127,34 @@ void setClock()
   Serial.print("Current time: ");
   Serial.print(asctime(&timeinfo));
 }
-//IPAddress remote(192,168,30,127);
+// IPAddress remote(192, 168, 30, 127);
 char* remote = "modbustls";
 void setup() {
   Serial.begin(115200);
- 
+
   WiFi.begin("E2", "fOlissio92");
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-  } 
+  }
   Serial.println("");
-  Serial.println("WiFi connected");  
+  Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   setClock();
-  mb.client();
+  modbus.client();
 }
-uint16_t v;
+uint16_t registerValue;
 void loop() {
-    if (!mb.isConnected(remote)) {
-      delay(1000);
-      //mb.connectWithKnownKey(remote, MODBUSTLS_PORT, client_cert, client_private_key, server_pk);
-      mb.connect(remote, MODBUSTLS_PORT, client_cert, client_private_key, ca_cert);
-      Serial.print(".");
-    } else {
-        mb.readHreg(remote, 0, &v);
-        mb.task();
-        delay(100);
-    }
+  if (!modbus.isConnected(remote)) {
+    delay(1000);
+    // modbus.connectWithKnownKey(remote, MODBUSTLS_PORT, clientCertificate, clientPrivateKey, serverPublicKey);
+    modbus.connect(remote, MODBUSTLS_PORT, clientCertificate, clientPrivateKey, caCertificate);
+    Serial.print(".");
+  } else {
+    modbus.readHreg(remote, 0, &registerValue);
+    modbus.task();
+    delay(100);
+  }
 }

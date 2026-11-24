@@ -10,49 +10,48 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
 #include <WiFi.h>
 
 #include <ModbusIP_PICO.h>
 
-//Modbus Registers Offsets
+// Modbus register offsets.
 const int SENSOR_IREG = 100;
 
-//ModbusIP object
-ModbusIP mb;
+// ModbusIP object.
+ModbusIP modbus;
 
-long ts;
+long lastUpdate;
 
 void setup() {
-    Serial.begin(115200);
- 
-    WiFi.begin("your_ssid", "your_password");
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
+  Serial.begin(115200);
 
-    Serial.println("");
-    Serial.println("WiFi connected");  
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
+  WiFi.begin("your_ssid", "your_password");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
 
-    mb.server();		//Start Modbus IP
-    // Add SENSOR_IREG register - Use addIreg() for analog Inputs
-    mb.addIreg(SENSOR_IREG);
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 
-    ts = millis();
+  modbus.server(); // Start the Modbus IP server.
+  // Add SENSOR_IREG register - Use addIreg() for analog Inputs
+  modbus.addIreg(SENSOR_IREG);
+
+  lastUpdate = millis();
 }
 
 void loop() {
-   //Call once inside loop() - all magic here
-   mb.task();
+  // Process Modbus events once per loop iteration.
+  modbus.task();
 
-   //Read each two seconds
-   if (millis() > ts + 2000) {
-       ts = millis();
-       //Setting raw value (0-1024)
-       mb.Ireg(SENSOR_IREG, analogRead(A0));
-   }
-   delay(10);
+  // Read every two seconds.
+  if (millis() > lastUpdate + 2000) {
+    lastUpdate = millis();
+    // Store the raw value (0-1024).
+    modbus.Ireg(SENSOR_IREG, analogRead(A0));
+  }
+  delay(10);
 }

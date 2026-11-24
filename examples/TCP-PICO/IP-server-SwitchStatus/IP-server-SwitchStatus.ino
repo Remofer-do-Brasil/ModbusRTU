@@ -1,6 +1,6 @@
 /*
   Modbus-Arduino Example - Test Holding Register (Modbus IP ESP8266)
-  Read Switch Status on pin GPIO0 
+  Read Switch Status on pin GPIO0
   Original library
   Copyright by André Sarmento Barbosa
   http://github.com/andresarmento/modbus-arduino
@@ -10,39 +10,38 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
-#include <WiFi.h>
 #include <ModbusIP_PICO.h>
+#include <WiFi.h>
 
-//Modbus Registers Offsets
+// Modbus register offsets.
 const int SWITCH_ISTS = 100;
-//Used Pins
-const int switchPin = 0; //GPIO0
+// Input pin.
+const int switchPin = 0; // GPIO0.
 
-//ModbusIP object
-ModbusIP mb;
+// ModbusIP object.
+ModbusIP modbus;
 
 void setup() {
-    Serial.begin(115200);
+  Serial.begin(115200);
 
-    WiFi.begin("your_ssid", "your_password");
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-    }
-    //Config Modbus IP
-    mb.server();
-    //Set ledPin mode
-    pinMode(switchPin, INPUT);
-    // Add SWITCH_ISTS register - Use addIsts() for digital inputs
-    mb.addIsts(SWITCH_ISTS);
+  WiFi.begin("your_ssid", "your_password");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  // Configure Modbus IP.
+  modbus.server();
+  // Configure the input pin.
+  pinMode(switchPin, INPUT);
+  // Add SWITCH_ISTS register - Use addIsts() for digital inputs
+  modbus.addIsts(SWITCH_ISTS);
 }
 
 void loop() {
-   //Call once inside loop() - all magic here
-   mb.task();
+  // Process Modbus events once per loop iteration.
+  modbus.task();
 
-   //Attach switchPin to SWITCH_ISTS register
-   mb.Ists(SWITCH_ISTS, digitalRead(switchPin));
-   delay(10);
+  // Associate switchPin with the SWITCH_ISTS register.
+  modbus.Ists(SWITCH_ISTS, digitalRead(switchPin));
+  delay(10);
 }

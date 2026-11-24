@@ -13,53 +13,52 @@
 ### Callback API
 
 ```c
-bool onSetCoil(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onSetHreg(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onSetIsts(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onSetIreg(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
+bool onSetCoil(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onSetHreg(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onSetIsts(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onSetIreg(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 ```
 
-- `address`   Address of register assign callback on
-- `cb`    Callback function
-- `numregs`   Count of sequental segisters assign this callback to
+- `address`: address of the first register
+- `callbackFunction`: callback function
+- `registerCount`: number of sequential registers to which the callback applies
 
-Assign callback function on register modify event. Multiple sequental registers can be affected by specifing `numregs` parameter.
-
+Assign a callback for register-modification events. Use `registerCount` to assign it to multiple sequential registers.
 
 ```c
-bool onGetCoil(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onGetHreg(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onGetIsts(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool onGetIreg(uint16_t address, cbModbus cb = nullptr, uint16_t numregs = 1);
+bool onGetCoil(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onGetHreg(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onGetIsts(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool onGetIreg(uint16_t address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 ```
 
-- `address`   Address of register assign callback on
-- `cb`    Callback function
-- `numregs`   Count of sequental segisters assign this callback to
+- `address`: address of the first register
+- `callbackFunction`: callback function
+- `registerCount`: number of sequential registers to which the callback applies
 
-Assign callback function on register query event. Multiple sequental registers can be affected by specifing `numregs` parameter.
+Assign a callback for register-query events. Use `registerCount` to assign it to multiple sequential registers.
 
 ```c
-bool removeOnGetCoil(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnSetCoil(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnGetHreg(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnSetHreg(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnGetIsts(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnSetIsts(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnGetIreg(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
-bool removeOnSetIreg(uint16_t offset, cbModbus cb = nullptr, uint16_t numregs = 1);
+bool removeOnGetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnSetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnGetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnSetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnGetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnSetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+bool removeOnSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 ```
 
-- `address`   Address of register assign callback on
-- `cb`    Callback function or NULL to remove all the callbacks.
-- `numregs`   Count of sequental segisters remove this callback to.
+- `offset`: address of the first register
+- `callbackFunction`: callback to remove, or `nullptr` to remove all matching callbacks
+- `registerCount`: number of sequential registers from which to remove the callback
 
-Disconnect specific callback function or all callbacks of the type if cb=NULL.
+Remove a specific callback, or all callbacks of that type when `callbackFunction == nullptr`.
 
 ```c
-typedef Modbus::ResultCode (*cbRequest)(Modbus::FunctionCode fc, const Modbus::RequestData data);
-bool onRequest(cbRequest cb = _onRequestDefault);
-bool onRequestSuccess(cbRequest cb = _onRequestDefault);
+typedef Modbus::ResultCode (*cbRequest)(Modbus::FunctionCode functionCode, const Modbus::RequestData data);
+bool onRequest(cbRequest callbackFunction = _onRequestDefault);
+bool onRequestSuccess(cbRequest callbackFunction = _onRequestDefault);
 
 union Modbus::RequestData {
     struct {
@@ -80,43 +79,45 @@ union Modbus::RequestData {
 };
 ```
 
-Callback function receives Modbus function code, structure `Modbus::RequestData` containing register type and offset (`TAddress` structure) and count of registers requested. The function should return [result code](#Result codes *Modbus::ResultCode*) `Modbus::EX_SUCCESS` to allow request processing or Modbus error code to block processing. This code will be returned to client/master.
+The callback receives the Modbus function code and a `Modbus::RequestData` structure containing the requested register type, offset, and count. Return
+`Modbus::EX_SUCCESS` to allow processing, or a Modbus error code to reject the request and return that code to the client.
 
 ```c
-void onConnect(cbModbusConnect cb);
-void onDisonnect(cbModbusConnect cb);
+void onConnect(cbModbusConnect callbackFunction);
+void onDisconnect(cbModbusConnect callbackFunction);
 ```
 
-Assign callback function on incoming connection event.
+Assign a callback for incoming connections.
 
 ```c
-typedef bool (*cbModbusConnect)(IPAddress ip);
+typedef bool (*cbModbusConnect)(IPAddress ipAddress);
 ```
 
-- `ip` Client's address of incomig connection source. `INADDR_NONE` for on disconnect callback.
+- `ipAddress`: client address for a connection event; `INADDR_NONE` for a disconnect event
 
-## Result codes *Modbus::ResultCode*
+## Result codes _Modbus::ResultCode_
 
-|Value|Hex|Definition|Decription|
-|---|---|---|---|
-|Modbus::EX_SUCCESS|0x00|Custom|No error|
-|Modbus::EX_ILLEGAL_FUNCTION|0x01|Modbus|Function Code not Supported|
-|Modbus::EX_ILLEGAL_ADDRESS|0x02|Modbus|Output Address not exists|
-|Modbus::EX_ILLEGAL_VALUE|0x03|Modbus|Output Value not in Range|
-|Modbus::EX_SLAVE_FAILURE|0x04|Modbus|Slave or Master Device Fails to process request
-|Modbus::EX_ACKNOWLEDGE|0x05|Modbus|Not used|
-|Modbus::EX_SLAVE_DEVICE_BUSY|0x06|Modbus|Not used|
-|Modbus::EX_MEMORY_PARITY_ERROR|0x08|Modbus|Not used|
-|Modbus::EX_PATH_UNAVAILABLE|0x0A|Modbus|Not used|
-|Modbus::EX_DEVICE_FAILED_TO_RESPOND|0x0B|Modbus|Not used|
-|Modbus::EX_GENERAL_FAILURE|0xE1|Custom|Unexpected master error|
-|Modbus::EX_DATA_MISMACH|0xE2|Custom|Inpud data size mismach|
-|Modbus::EX_UNEXPECTED_RESPONSE|0xE3|Custom|Returned result doesn't mach transaction|
-|Modbus::EX_TIMEOUT|0xE4|Custom|Operation not finished within reasonable time|
-|Modbus::EX_CONNECTION_LOST|0xE5|Custom|Connection with device lost|
-|Modbus::EX_CANCEL|0xE6|Custom|Transaction/request canceled|
+| Value                               | Hex  | Definition | Description                                           |
+| ----------------------------------- | ---- | ---------- | ----------------------------------------------------- |
+| Modbus::EX_SUCCESS                  | 0x00 | Custom     | No error                                              |
+| Modbus::EX_ILLEGAL_FUNCTION         | 0x01 | Modbus     | Function code is not supported                        |
+| Modbus::EX_ILLEGAL_ADDRESS          | 0x02 | Modbus     | Output address does not exist                         |
+| Modbus::EX_ILLEGAL_VALUE            | 0x03 | Modbus     | Output value is out of range                          |
+| Modbus::EX_SLAVE_FAILURE            | 0x04 | Modbus     | Server or client device failed to process the request |
+| Modbus::EX_ACKNOWLEDGE              | 0x05 | Modbus     | Not used                                              |
+| Modbus::EX_SLAVE_DEVICE_BUSY        | 0x06 | Modbus     | Not used                                              |
+| Modbus::EX_MEMORY_PARITY_ERROR      | 0x08 | Modbus     | Not used                                              |
+| Modbus::EX_PATH_UNAVAILABLE         | 0x0A | Modbus     | Not used                                              |
+| Modbus::EX_DEVICE_FAILED_TO_RESPOND | 0x0B | Modbus     | Not used                                              |
+| Modbus::EX_GENERAL_FAILURE          | 0xE1 | Custom     | Unexpected client error                               |
+| Modbus::EX_DATA_MISMATCH            | 0xE2 | Custom     | Input data size mismatch                              |
+| Modbus::EX_UNEXPECTED_RESPONSE      | 0xE3 | Custom     | Returned result does not match transaction            |
+| Modbus::EX_TIMEOUT                  | 0xE4 | Custom     | Operation not finished within reasonable time         |
+| Modbus::EX_CONNECTION_LOST          | 0xE5 | Custom     | Connection with device lost                           |
+| Modbus::EX_CANCEL                   | 0xE6 | Custom     | Transaction/request canceled                          |
 
 # Modbus Library for Arduino
+
 ### ModbusRTU, ModbusTCP and ModbusTCP Security
 
 (c)2020 [Alexander Emelianov](mailto:a.m.emelianov@gmail.com)

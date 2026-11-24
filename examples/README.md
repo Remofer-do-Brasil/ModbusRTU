@@ -2,47 +2,47 @@
 
 ## [RTU](RTU)
 
-ModbusRTU master and slave examples
+Modbus RTU client and server examples.
 
 ## [UDP](UDP)
 
-Modbus UDP/IP master examples
+Modbus UDP/IP client examples.
 
+## [TCP Pico W/Pico 2 W](TCP-PICO)
 
-## [TCP PICOW/PICO2W](TCP-PICO)
-
-ModbusTCP for PICOW/PICO2W client and server examples
+Modbus TCP client and server examples for Pico W and Pico 2 W.
 
 ## [TCP Ethernet W5x00](TCP-Ethernet)
 
-ModbusTCP for W5x00 Ethernet library client and server examples (for all Arduino-pico).
+Modbus TCP client and server examples for the W5x00 Ethernet library on Arduino-Pico.
 
-## [TCP LWIP-Ethernet W5x00/ENC28J60l](TCP-LWIP-Ethernet)
+## [TCP lwIP-Ethernet W5x00/ENC28J60](TCP-LWIP-Ethernet)
 
-ModbusTCP for W5x00/ENC28J60l LWIP-Ethernet library client and server examples (for all Arduino-pico).
+Modbus TCP client and server examples for the W5x00/ENC28J60 lwIP-Ethernet library on Arduino-Pico.
 
-## [TLS LWIP-Ethernet W5x00](TCP-LWIP-TLS-Ethernet)
+## [TLS lwIP-Ethernet W5x00](TCP-LWIP-TLS-Ethernet)
 
-ModbusTCP Security for W5x00 LWIP-Ethernet library client and server examples (for all Arduino-pico).
+Modbus TCP Security client and server examples for the W5x00 lwIP-Ethernet library on Arduino-Pico.
 
-## [TLS PICOW/PICO2W](TLS)
+## [TLS Pico W/Pico 2 W](TLS)
 
-ModbusTCP Security for PICOW/PICO2W client and server examples.
+Modbus TCP Security client and server examples for Pico W and Pico 2 W.
 
-## [Callbacks usage](Callback)
+## [Callback usage](Callback)
 
 Examples of using callback functions.
 
-## [Files operations](Files)
+## [File operations](Files)
 
 Modbus file operations examples.
 
-## [ModbusRTU to ModbusTCP bridge and related functions](Bridge)
+## [Modbus RTU-to-TCP bridge and related functions](Bridge)
 
-Very basic example of accessing ModbusRTU slave device connected to PICOW/PICO2W via ModbusTCP server.
+Basic example of exposing a Modbus RTU server connected to a Pico W or Pico 2 W through a Modbus TCP server.
 
 # Modbus Library for Arduino
-### ModbusRTU, ModbusTCP and ModbusTCP Security
+
+### Modbus RTU, Modbus TCP, and Modbus TCP Security
 
 (c)2020 [Alexander Emelianov](mailto:a.m.emelianov@gmail.com)
 

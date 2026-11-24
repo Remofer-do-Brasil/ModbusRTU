@@ -1,6 +1,6 @@
 /*
-  Modbus-Arduino Example - Test Led using callback (Modbus IP ESP8266/ESP32)
-  Control a Led on D4 pin using Write Single Coil Modbus Function 
+  Modbus-Arduino Example - Test an LED using a callback (Modbus IP ESP8266/ESP32)
+  Control an LED using the Modbus Write Single Coil function.
   Original library
   Copyright by André Sarmento Barbosa
   http://github.com/andresarmento/modbus-arduino
@@ -10,29 +10,29 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
 #include <WiFi.h>
 
 #include <ModbusIP_PICO.h>
 
-//Modbus Registers Offsets
+// Modbus register offsets.
 const int LED_COIL = 100;
 
-const int ledPin = LED_BUILTIN;  //  PICO LED_BUILTIN
+const int ledPin = LED_BUILTIN; // Pico LED_BUILTIN.
 
-//ModbusIP object
-ModbusIP mb;
+// ModbusIP object.
+ModbusIP modbus;
 
-// Callback function for write (set) Coil. Returns value to store.
-uint16_t cbLed(TRegister* reg, uint16_t val) {
-  //Attach ledPin to LED_COIL register
-  digitalWrite(ledPin, COIL_BOOL(val));
-  return val;
+// Callback for writing the coil. Returns the value to store.
+uint16_t cbLed(TRegister* reg, uint16_t value) {
+  (void)reg;
+  // Associate ledPin with the LED_COIL register.
+  digitalWrite(ledPin, COIL_BOOL(value));
+  return value;
 }
 
 // Callback function for client connect. Returns true to allow connection.
-bool cbConn(IPAddress ip) {
-  Serial.println(ip);
+bool cbConn(IPAddress localIpAddress) {
+  Serial.println(localIpAddress);
   return true;
 }
 
@@ -51,16 +51,16 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.onConnect(cbConn);  // Add callback on connection event
-  mb.server();
+  modbus.onConnect(cbConn); // Assign the connection callback.
+  modbus.server();
 
   pinMode(ledPin, OUTPUT);
-  mb.addCoil(LED_COIL);           // Add Coil. The same as mb.addCoil(COIL_BASE, false, LEN)
-  mb.onSetCoil(LED_COIL, cbLed);  // Add callback on Coil LED_COIL value set
+  modbus.addCoil(LED_COIL);          // Add the coil.
+  modbus.onSetCoil(LED_COIL, cbLed); // Assign the callback that handles writes to LED_COIL.
 }
 
 void loop() {
-  //Call once inside loop() - all magic here
-  mb.task();
+  // Process Modbus events once per loop iteration.
+  modbus.task();
   delay(10);
 }

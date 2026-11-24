@@ -9,15 +9,14 @@
 */
 
 #include <SPI.h>
-//#include <EthernetCompat.h> //LWIP-Ethernet was include by ModbusLWIP_TLS_Ethernet.h
+// EthernetCompat.h is already included by ModbusLWIP_TLS_Ethernet.h.
 
 #include <ModbusLWIP_TLS_Ethernet.h>
 
-
 // The hardcoded certificate authority for this example.
-// Don't use it on your own apps!!!!!
+// Example certificate only. Replace it before using this code in an application.
 
-const char ca_cert[] PROGMEM = R"EOF(
+const char caCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIUM3r6zWNMv+GhjWwmfo14KZLQaDswDQYJKoZIhvcNAQEL
 BQAwGTEXMBUGA1UEAwwOMTkyLjE2OC4xMy4xMDMwHhcNMjYwMzE1MTIxMTQ2WhcN
@@ -40,7 +39,7 @@ ajOnpSrawW6PU2WWYfJccpALjBbKMew=
 )EOF";
 
 // The server's private key which must be kept secret
-const char server_private_key[] PROGMEM = R"EOF(
+const char serverPrivateKey[] PROGMEM = R"EOF(
 -----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEAqpElFVLavA/4liyqALA3VpirBhbdl4934dwpsadrRb74lYMD
 mCFornjcwoi8FBTmmwL0mtcBAwFGLBzsnSglrq7mrmAqdKLHr9fVMZJSFzPq3M+T
@@ -71,7 +70,7 @@ INpOEm3sy9CLLALihilxFUsGFe9JPxB3b9t0zflVznydcjGw3SQvovyh8JzvoPQ1
 )EOF";
 
 // The server's public certificate which must be shared
-const char server_cert[] PROGMEM = R"EOF(
+const char serverCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICuTCCAaECFA1QaDc3FpfpU9gLTat4GFW18ECrMA0GCSqGSIb3DQEBCwUAMBkx
 FzAVBgNVBAMMDjE5Mi4xNjguMTMuMTAzMB4XDTI2MDMxNTEyMTMxNFoXDTI3MDMx
@@ -92,26 +91,24 @@ K7AiCInPr6Y3970GGVL4Bwgy1yE7B+Yg9p+pWx0=
 
 )EOF";
 
-//CS = 17
-//Int = 21
+// chipSelectPin = 17
+// interruptPin = 21
 ArduinoWiznet5500lwIP Ethernet(17, SPI, 21);
-//ArduinoWiznet5100lwIP Ethernet(17, SPI, 21);
-//ArduinoENC28J60lwIP Ethernet(17, SPI, 21);
+// ArduinoWiznet5100lwIP Ethernet(chipSelectPin, SPI, interruptPin);
+// ArduinoENC28J60lwIP Ethernet(chipSelectPin, SPI, interruptPin);
 // Modbus Registers Offsets
-#define REG_TEMPERATURE 0  // 温度寄存器（放大10倍，25.5℃=255）
-#define REG_HUMIDITY 1     // 湿度寄存器（放大10倍，60.2%=602）
+#define REG_TEMPERATURE 0 // 温度寄存器（放大10倍，25.5℃=255）
+#define REG_HUMIDITY    1 // 湿度寄存器（放大10倍，60.2%=602）
 
 // 模拟温湿度数据（存储在寄存器中）
-uint16_t temperature = 256;  // 25.6℃（放大10倍存储）
-uint16_t humidity = 605;     // 60.5%（放大10倍存储）
+uint16_t temperature = 256; // 25.6℃（放大10倍存储）
+uint16_t humidity = 605;    // 60.5%（放大10倍存储）
 // Enter a MAC address and IP address for your controller below.
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
-IPAddress ip(192, 168, 13, 177);   // The IP address will be dependent on your local network:
-IPAddress myDns(192, 168, 13, 1);  //set the dns
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress localIpAddress(192, 168, 13, 177); // The IP address will be dependent on your local network:
+IPAddress myDns(192, 168, 13, 1);            // DNS server address.
 
-ModbusEthernetTLS mb;  // Declare ModbusTCP instance
+ModbusEthernetTLS modbus; // Declare ModbusTCP instance
 
 // Set time via NTP, as required for x.509 validation
 void setClock() {
@@ -135,14 +132,14 @@ void setClock() {
 
 void setup() {
 
-  //SPI.setRX(16);
-  //SPI.setCS(17);
-  //SPI.setSCK(18);
-  //SPI.setTX(19);
-  //Intn = 21
+  // SPI.setRX(16);
+  // SPI.setCS(17);
+  // SPI.setSCK(18);
+  // SPI.setTX(19);
+  // interruptPin = 21
 
-  Serial.begin(115200);  // Open serial communications and wait for port to open
-    // start the Ethernet connection:
+  Serial.begin(115200); // Start serial communication.
+                        // start the Ethernet connection:
   Serial.println("Initialize Ethernet with DHCP:");
   if (Ethernet.begin(mac) == 0) {
     Serial.println("Failed to configure Ethernet using DHCP");
@@ -150,29 +147,29 @@ void setup() {
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
       Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
       while (true) {
-        delay(1);  // do nothing, no point running without Ethernet hardware
+        delay(1); // Wait because the application cannot continue without Ethernet hardware.
       }
     }
     if (Ethernet.linkStatus() == LinkOFF) {
       Serial.println("Ethernet cable is not connected.");
     }
-    // try to configure using IP address instead of DHCP:
-    Ethernet.begin(mac, ip, myDns);
+    // Configure a static IP address if DHCP fails.
+    Ethernet.begin(mac, localIpAddress, myDns);
   } else {
     Serial.print("  DHCP assigned IP ");
     Serial.println(Ethernet.localIP());
   }
 
-  delay(1000);  // give the Ethernet shield a second to initialize
+  delay(1000); // Give the Ethernet shield one second to initialize.
 
   setClock();
-  mb.server(MODBUSTLS_PORT, server_cert, server_private_key, ca_cert);  // Act as Modbus TCP server
-  //mb.server();              // Act as Modbus TCP server
-  mb.addHreg(REG_TEMPERATURE);
-  mb.addHreg(REG_HUMIDITY);
+  modbus.server(MODBUSTLS_PORT, serverCertificate, serverPrivateKey, caCertificate); // Act as Modbus TCP server
+  // modbus.server(); // Act as a Modbus TCP server.
+  modbus.addHreg(REG_TEMPERATURE);
+  modbus.addHreg(REG_HUMIDITY);
 
-  //Serial.println("IP Address: ");
-  //Serial.println(Ethernet.localIP());
+  // Serial.println("IP address: ");
+  // Serial.println(Ethernet.localIP());
   Serial.println("ModbusTCP Security-Ethernet服务器已启动");
 }
 
@@ -187,13 +184,12 @@ void loop() {
     humidity = constrain(humidity + (random(-5, 6)), 500, 700);
     // 更新寄存器
 
-    mb.Hreg(REG_TEMPERATURE, temperature);
-    mb.Hreg(REG_HUMIDITY, humidity);
+    modbus.Hreg(REG_TEMPERATURE, temperature);
+    modbus.Hreg(REG_HUMIDITY, humidity);
 
     // 调试输出
-    Serial.printf("Temperature: %.1f℃, Humidity: %.1f%%\n",
-                  temperature / 10.0, humidity / 10.0);
+    Serial.printf("Temperature: %.1f℃, Humidity: %.1f%%\n", temperature / 10.0, humidity / 10.0);
   }
-  mb.task();  // Server Modbus TCP queries
+  modbus.task(); // Server Modbus TCP queries
   delay(10);
 }

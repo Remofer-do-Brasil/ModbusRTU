@@ -18,29 +18,29 @@
 
 static inline uint16_t __swap_16(uint16_t num) { return (num >> 8) | (num << 8); }
 
-#define COIL(n)                                                                                                                                      \
-  (TAddress) { TAddress::COIL, n }
-#define ISTS(n)                                                                                                                                      \
-  (TAddress) { TAddress::ISTS, n }
-#define IREG(n)                                                                                                                                      \
-  (TAddress) { TAddress::IREG, n }
-#define HREG(n)                                                                                                                                      \
-  (TAddress) { TAddress::HREG, n }
-#define BIT_VAL(v)   ((v) ? 0xFF00 : 0x0000)
-#define BIT_BOOL(v)  ((v) == 0xFF00)
-#define COIL_VAL(v)  ((v) ? 0xFF00 : 0x0000)
-#define COIL_BOOL(v) ((v) == 0xFF00)
-#define ISTS_VAL(v)  ((v) ? 0xFF00 : 0x0000)
-#define ISTS_BOOL(v) ((v) == 0xFF00)
+#define COIL(addressValue)                                                                                                                           \
+  (TAddress) { TAddress::COIL, addressValue }
+#define ISTS(addressValue)                                                                                                                           \
+  (TAddress) { TAddress::ISTS, addressValue }
+#define IREG(addressValue)                                                                                                                           \
+  (TAddress) { TAddress::IREG, addressValue }
+#define HREG(addressValue)                                                                                                                           \
+  (TAddress) { TAddress::HREG, addressValue }
+#define BIT_VAL(bitValue)    ((bitValue) ? 0xFF00 : 0x0000)
+#define BIT_BOOL(bitValue)   ((bitValue) == 0xFF00)
+#define COIL_VAL(coilValue)  ((coilValue) ? 0xFF00 : 0x0000)
+#define COIL_BOOL(coilValue) ((coilValue) == 0xFF00)
+#define ISTS_VAL(inputValue)  ((inputValue) ? 0xFF00 : 0x0000)
+#define ISTS_BOOL(inputValue) ((inputValue) == 0xFF00)
 
-// For depricated (v1.xx) onSet/onGet format compatibility
+// Retained for compatibility with the deprecated v1.x onSet/onGet format.
 #define cbDefault nullptr
 
 struct TRegister;
 #ifdef MODBUS_USE_STL
-typedef std::function<uint16_t(TRegister* reg, uint16_t val)> cbModbus; // Callback function Type
+typedef std::function<uint16_t(TRegister* reg, uint16_t value)> cbModbus; // Callback function type
 #else
-typedef uint16_t (*cbModbus)(TRegister* reg, uint16_t val); // Callback function Type
+typedef uint16_t (*cbModbus)(TRegister* reg, uint16_t value); // Callback function type
 #endif
 
 struct TAddress {
@@ -81,7 +81,7 @@ struct TCallback {
   enum CallbackType { ON_SET, ON_GET };
   CallbackType type;
   TAddress address;
-  cbModbus cb;
+  cbModbus callback;
 };
 
 struct TRegister {
@@ -109,26 +109,27 @@ public:
     FC_READWRITE_REGS = 0x17   // Read/Write Multiple registers
   };
   // Exception Codes
-  // Custom result codes used internally and for callbacks but never used for Modbus responce
+  // Custom result codes are used internally and by callbacks, but never in Modbus responses.
   enum ResultCode {
     EX_SUCCESS = 0x00,                  // Custom. No error
-    EX_ILLEGAL_FUNCTION = 0x01,         // Function Code not Supported
-    EX_ILLEGAL_ADDRESS = 0x02,          // Output Address not exists
-    EX_ILLEGAL_VALUE = 0x03,            // Output Value not in Range
-    EX_SLAVE_FAILURE = 0x04,            // Slave or Master Device Fails to process request
+    EX_ILLEGAL_FUNCTION = 0x01,         // Function code is not supported
+    EX_ILLEGAL_ADDRESS = 0x02,          // Output address does not exist
+    EX_ILLEGAL_VALUE = 0x03,            // Output value is out of range
+    EX_SLAVE_FAILURE = 0x04,            // Server or client device failed to process the request
     EX_ACKNOWLEDGE = 0x05,              // Not used
     EX_SLAVE_DEVICE_BUSY = 0x06,        // Not used
     EX_MEMORY_PARITY_ERROR = 0x08,      // Not used
     EX_PATH_UNAVAILABLE = 0x0A,         // Not used
     EX_DEVICE_FAILED_TO_RESPOND = 0x0B, // Not used
     EX_GENERAL_FAILURE = 0xE1,          // Custom. Unexpected master error
-    EX_DATA_MISMACH = 0xE2,             // Custom. Inpud data size mismach
-    EX_UNEXPECTED_RESPONSE = 0xE3,      // Custom. Returned result doesn't mach transaction
+    EX_DATA_MISMATCH = 0xE2,            // Custom. Input data size mismatch
+    EX_DATA_MISMACH = EX_DATA_MISMATCH, // Deprecated misspelling retained for source compatibility
+    EX_UNEXPECTED_RESPONSE = 0xE3,      // Custom. Returned result does not match the transaction
     EX_TIMEOUT = 0xE4,                  // Custom. Operation not finished within reasonable time
     EX_CONNECTION_LOST = 0xE5,          // Custom. Connection with device lost
     EX_CANCEL = 0xE6,                   // Custom. Transaction/request canceled
-    EX_PASSTHROUGH = 0xE7,              // Custom. Raw callback. Indicate to normal processing on callback exit
-    EX_FORCE_PROCESS = 0xE8             // Custom. Raw callback. Indicate to force processing on callback exit
+    EX_PASSTHROUGH = 0xE7,              // Custom. Continue normal processing after the raw callback exits
+    EX_FORCE_PROCESS = 0xE8             // Custom. Force processing after the raw callback exits
   };
   union RequestData {
     struct {
@@ -146,42 +147,48 @@ public:
       uint16_t andMask;
       uint16_t orMask;
     };
-    RequestData(TAddress r1, uint16_t c1) {
-      reg = r1;
-      regCount = c1;
+    RequestData(TAddress registerAddress, uint16_t registerCount) {
+      reg = registerAddress;
+      regCount = registerCount;
     };
-    RequestData(TAddress r1, uint16_t c1, TAddress r2, uint16_t c2) {
-      regRead = r1;
-      regReadCount = c1;
-      regWrite = r2;
-      regWriteCount = c2;
+    RequestData(TAddress readAddress, uint16_t readCount, TAddress writeAddress, uint16_t writeCount) {
+      regRead = readAddress;
+      regReadCount = readCount;
+      regWrite = writeAddress;
+      regWriteCount = writeCount;
     };
-    RequestData(TAddress r1, uint16_t m1, uint16_t m2) {
-      regMask = r1;
-      andMask = m1;
-      orMask = m2;
+    RequestData(TAddress maskAddress, uint16_t andMaskValue, uint16_t orMaskValue) {
+      regMask = maskAddress;
+      andMask = andMaskValue;
+      orMask = orMaskValue;
     };
   };
 
   struct frame_arg_t {
-    bool to_server;
+    union {
+      bool toServer;
+      bool to_server; // Deprecated name retained for source compatibility.
+    };
     union {
       uint8_t slaveId;
       struct {
         uint8_t unitId;
-        uint32_t ipaddr;
+        union {
+          uint32_t ipAddress;
+          uint32_t ipaddr; // Deprecated name retained for source compatibility.
+        };
         uint16_t transactionId;
       };
     };
-    frame_arg_t(uint8_t s, bool m = false) {
-      slaveId = s;
-      to_server = m;
+    frame_arg_t(uint8_t serverId, bool isServerResponse = false) {
+      slaveId = serverId;
+      toServer = isServerResponse;
     };
-    frame_arg_t(uint8_t u, uint32_t a, uint16_t t, bool m = false) {
-      unitId = u;
-      ipaddr = a;
-      transactionId = t;
-      to_server = m;
+    frame_arg_t(uint8_t unitIdentifier, uint32_t remoteAddress, uint16_t transactionIdentifier, bool isServerResponse = false) {
+      unitId = unitIdentifier;
+      ipAddress = remoteAddress;
+      transactionId = transactionIdentifier;
+      toServer = isServerResponse;
     };
   };
 
@@ -191,17 +198,17 @@ public:
   void cbDisable();
 
 private:
-  ResultCode readBits(TAddress startreg, uint16_t numregs, FunctionCode fn);
-  ResultCode readWords(TAddress startreg, uint16_t numregs, FunctionCode fn);
+  ResultCode readBits(TAddress startRegister, uint16_t registerCount, FunctionCode functionCode);
+  ResultCode readWords(TAddress startRegister, uint16_t registerCount, FunctionCode functionCode);
 
-  bool setMultipleBits(uint8_t* frame, TAddress startreg, uint16_t numoutputs);
-  bool setMultipleWords(uint16_t* frame, TAddress startreg, uint16_t numoutputs);
+  bool setMultipleBits(uint8_t* frame, TAddress startRegister, uint16_t outputCount);
+  bool setMultipleWords(uint16_t* frame, TAddress startRegister, uint16_t outputCount);
 
-  void getMultipleBits(uint8_t* frame, TAddress startreg, uint16_t numregs);
-  void getMultipleWords(uint16_t* frame, TAddress startreg, uint16_t numregs);
+  void getMultipleBits(uint8_t* frame, TAddress startRegister, uint16_t registerCount);
+  void getMultipleWords(uint16_t* frame, TAddress startRegister, uint16_t registerCount);
 
-  void bitsToBool(bool* dst, uint8_t* src, uint16_t numregs);
-  void boolToBits(uint8_t* dst, bool* src, uint16_t numregs);
+  void bitsToBool(bool* dst, uint8_t* src, uint16_t registerCount);
+  void boolToBits(uint8_t* dst, bool* src, uint16_t registerCount);
 
 protected:
   // Reply Types
@@ -240,63 +247,66 @@ protected:
   uint16_t _len = 0;
   uint8_t _reply = 0;
   bool cbEnabled = true;
-  uint16_t callback(TRegister* reg, uint16_t val, TCallback::CallbackType t);
+  uint16_t callback(TRegister* reg, uint16_t value, TCallback::CallbackType callbackType);
   virtual TRegister* searchRegister(TAddress addr);
-  void exceptionResponse(FunctionCode fn, ResultCode excode);                                         // Fills _frame with response
-  void successResponce(TAddress startreg, uint16_t numoutputs, FunctionCode fn);                      // Fills frame with response
-  void slavePDU(uint8_t* frame);                                                                      // For Slave
-  void masterPDU(uint8_t* frame, uint8_t* sourceFrame, TAddress startreg, uint8_t* output = nullptr); // For Master
-  // frame - data received form slave
-  // sourceFrame - data have sent fo slave
-  // startreg - local register to start put data to
-  // output - if not null put data to the buffer insted local registers. output assumed to by array of uint16_t or boolean
+  void exceptionResponse(FunctionCode functionCode, ResultCode exceptionCode);                  // Fills _frame with a response.
+  void successResponse(TAddress startRegister, uint16_t outputCount, FunctionCode functionCode); // Fills _frame with a response.
+  void successResponce(TAddress startRegister, uint16_t outputCount, FunctionCode functionCode) { // Deprecated spelling.
+    successResponse(startRegister, outputCount, functionCode);
+  }
+  void slavePDU(uint8_t* frame); // Processes a server request.
+  void masterPDU(uint8_t* frame, uint8_t* sourceFrame, TAddress startRegister, uint8_t* output = nullptr); // For Master
+  // frame - data received from the server
+  // sourceFrame - data sent to the server
+  // startRegister - first local register in which to store data
+  // output - if not null, store data in this buffer instead of local registers; the buffer must be an array of uint16_t or bool
 
-  bool readSlave(uint16_t address, uint16_t numregs, FunctionCode fn);
-  bool writeSlaveBits(TAddress startreg, uint16_t to, uint16_t numregs, FunctionCode fn, bool* data = nullptr);
-  bool writeSlaveWords(TAddress startreg, uint16_t to, uint16_t numregs, FunctionCode fn, uint16_t* data = nullptr);
-  // startreg - local register to get data from
-  // to - slave register to write data to
-  // numregs - number of registers
-  // fn - Modbus function
-  // data - if null use local registers. Otherwise use data from array to erite to slave
-  bool removeOn(TCallback::CallbackType t, TAddress address, cbModbus cb = nullptr, uint16_t numregs = 1);
+  bool readSlave(uint16_t address, uint16_t registerCount, FunctionCode functionCode);
+  bool writeSlaveBits(TAddress startRegister, uint16_t destination, uint16_t registerCount, FunctionCode functionCode, bool* data = nullptr);
+  bool writeSlaveWords(TAddress startRegister, uint16_t destination, uint16_t registerCount, FunctionCode functionCode, uint16_t* data = nullptr);
+  // startRegister - first local register from which to read data
+  // destination - first server register to which to write data
+  // registerCount - number of registers
+  // functionCode - Modbus function code
+  // data - if null, use local registers; otherwise, write data from the array to the server
+  bool removeOn(TCallback::CallbackType callbackType, TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 
 public:
-  bool addReg(TAddress address, uint16_t value = 0, uint16_t numregs = 1);
+  bool addReg(TAddress address, uint16_t value = 0, uint16_t registerCount = 1);
   bool Reg(TAddress address, uint16_t value);
   uint16_t Reg(TAddress address);
-  bool removeReg(TAddress address, uint16_t numregs = 1);
-  bool addReg(TAddress address, uint16_t* value, uint16_t numregs = 1);
-  bool Reg(TAddress address, uint16_t* value, uint16_t numregs = 1);
+  bool removeReg(TAddress address, uint16_t registerCount = 1);
+  bool addReg(TAddress address, uint16_t* value, uint16_t registerCount = 1);
+  bool Reg(TAddress address, uint16_t* value, uint16_t registerCount = 1);
 
-  bool onGet(TAddress address, cbModbus cb = nullptr, uint16_t numregs = 1);
-  bool onSet(TAddress address, cbModbus cb = nullptr, uint16_t numregs = 1);
-  bool removeOnSet(TAddress address, cbModbus cb = nullptr, uint16_t numregs = 1);
-  bool removeOnGet(TAddress address, cbModbus cb = nullptr, uint16_t numregs = 1);
+  bool onGet(TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSet(TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSet(TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGet(TAddress address, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 
   virtual uint32_t eventSource() { return 0; }
 #if defined(MODBUS_USE_STL)
   typedef std::function<ResultCode(FunctionCode, const RequestData)> cbRequest; // Callback function Type
   typedef std::function<ResultCode(uint8_t*, uint8_t, void*)> cbRaw;            // Callback function Type
 #else
-  typedef ResultCode (*cbRequest)(FunctionCode fc, const RequestData data); // Callback function Type
-  typedef ResultCode (*cbRaw)(uint8_t*, uint8_t, void*);                    // Callback function Type
+  typedef ResultCode (*cbRequest)(FunctionCode functionCode, const RequestData data); // Callback function type
+  typedef ResultCode (*cbRaw)(uint8_t*, uint8_t, void*);                              // Callback function type
 #endif
 
 protected:
   cbRaw _cbRaw = nullptr;
-  static ResultCode _onRequestDefault(FunctionCode fc, const RequestData data);
+  static ResultCode _onRequestDefault(FunctionCode functionCode, const RequestData data);
   cbRequest _onRequest = _onRequestDefault;
 
 public:
-  bool onRaw(cbRaw cb = nullptr);
-  bool onRequest(cbRequest cb = _onRequestDefault);
+  bool onRaw(cbRaw callbackFunction = nullptr);
+  bool onRequest(cbRequest callbackFunction = _onRequestDefault);
 #if defined(MODBUSAPI_OPTIONAL)
 protected:
   cbRequest _onRequestSuccess = _onRequestDefault;
 
 public:
-  bool onRequestSuccess(cbRequest cb = _onRequestDefault);
+  bool onRequestSuccess(cbRequest callbackFunction = _onRequestDefault);
 #endif
 
 #if defined(MODBUS_FILES)
@@ -304,25 +314,25 @@ public:
 #if defined(MODBUS_USE_STL)
   bool onFile(std::function<ResultCode(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)>);
 #else
-  bool onFile(ResultCode (*cb)(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*));
+  bool onFile(ResultCode (*callbackFunction)(FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*));
 #endif
 private:
-  ResultCode fileOp(FunctionCode fc, uint16_t fileNum, uint16_t recNum, uint16_t recLen, uint8_t* frame);
+  ResultCode fileOp(FunctionCode functionCode, uint16_t fileNum, uint16_t recNum, uint16_t recLen, uint8_t* frame);
 
 protected:
-  bool readSlaveFile(uint16_t* fileNum, uint16_t* startRec, uint16_t* len, uint8_t count, FunctionCode fn);
-  // fileNum - sequental array of files numbers to read
-  // startRec - array of strart records for each file
+  bool readSlaveFile(uint16_t* fileNum, uint16_t* startRec, uint16_t* len, uint8_t count, FunctionCode functionCode);
+  // fileNum - sequential array of file numbers to read
+  // startRec - array of starting records for each file
   // len - array of counts of records to read in terms of register size (2 bytes) for each file
-  // count - count of records to be compose in the single request
-  // fn - Modbus function. Assumed to be 0x14
-  bool writeSlaveFile(uint16_t* fileNum, uint16_t* startRec, uint16_t* len, uint8_t count, FunctionCode fn, uint8_t* data);
-  // fileNum - sequental array of files numbers to read
-  // startRec - array of strart records for each file
+  // count - number of records to include in a single request
+  // functionCode - Modbus function code; expected to be 0x14
+  bool writeSlaveFile(uint16_t* fileNum, uint16_t* startRec, uint16_t* len, uint8_t count, FunctionCode functionCode, uint8_t* data);
+  // fileNum - sequential array of file numbers to write
+  // startRec - array of starting records for each file
   // len - array of counts of records to read in terms of register size (2 bytes) for each file
-  // count - count of records to be compose in the single request
-  // fn - Modbus function. Assumed to be 0x15
-  // data - sequental set of data records
+  // count - number of records to include in a single request
+  // functionCode - Modbus function code; expected to be 0x15
+  // data - sequential set of data records
 #endif
 };
 
@@ -337,7 +347,8 @@ typedef bool (*cbTransaction)(Modbus::ResultCode event, uint16_t transactionId, 
 #if defined(MODBUS_USE_STL)
 typedef std::function<Modbus::ResultCode(Modbus::FunctionCode, uint16_t, uint16_t, uint16_t, uint8_t*)> cbModbusFileOp;
 #else
-typedef Modbus::ResultCode (*cbModbusFileOp)(Modbus::FunctionCode func, uint16_t fileNum, uint16_t recNumber, uint16_t recLength, uint8_t* frame);
+typedef Modbus::ResultCode (*cbModbusFileOp)(Modbus::FunctionCode functionCode, uint16_t fileNumber, uint16_t recordNumber, uint16_t recordLength,
+                                             uint8_t* frame);
 #endif
 #endif
 

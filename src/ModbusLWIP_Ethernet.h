@@ -17,22 +17,22 @@
 
 #include "ModbusTCPTemplate.h"
 
-#include <EthernetCompat.h> //for LWIP-Ethernet
+#include <EthernetCompat.h> // lwIP-Ethernet compatibility layer.
 #include <WiFi.h>
 
 class ModbusEthernet : public ModbusAPI<ModbusTCPTemplate<EthernetServer, EthernetClient>> {
 #ifdef MODBUSIP_USE_DNS
 private:
-  static IPAddress resolver(const char* host) {
+  static IPAddress resolveHost(const char* host) {
     DNSClient dns;
-    IPAddress ip;
+    IPAddress ipAddress;
 
     dns.begin(Ethernet.dnsServerIP());
-    if (dns.getHostByName(host, ip) == 1) return ip;
+    if (dns.getHostByName(host, ipAddress) == 1) return ipAddress;
     else return IPADDR_NONE;
   }
 
 public:
-  ModbusEthernet() : ModbusAPI() { resolve = resolver; }
+  ModbusEthernet() : ModbusAPI() { resolver = resolveHost; }
 #endif
 };

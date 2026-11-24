@@ -6,56 +6,54 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
-#include <WiFi.h>
 #include <ModbusIP_PICO.h>
+#include <WiFi.h>
 
+const int LED_COIL = 1;              // Coil offset.
+IPAddress remote(192, 168, 30, 116); // Modbus server address.
 
-const int LED_COIL = 1;               // Modbus Coil Offset
-IPAddress remote(192, 168, 30, 116);  // Address of Modbus Slave device
+ModbusIP modbus; // ModbusIP object.
 
-ModbusIP mb;  //ModbusIP object
-
-uint16_t gc(TRegister* r, uint16_t v) { // Callback function
-  if (r->value != v) {  // Check if Coil state is going to be changed
+uint16_t onCoilChange(TRegister* reg, uint16_t value) { // Callback function.
+  if (reg->value != value) {                            // Check whether the coil state will change.
     Serial.print("Set reg: ");
-    Serial.println(v);
-    if (COIL_BOOL(v)) {
+    Serial.println(value);
+    if (COIL_BOOL(value)) {
       digitalWrite(LED_BUILTIN, LOW);
     } else {
       digitalWrite(LED_BUILTIN, HIGH);
     }
   }
-  return v;
+  return value;
 }
 
 void setup() {
   Serial.begin(115200);
- 
+
   WiFi.begin("SSID", "password");
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
- 
+
   Serial.println("");
-  Serial.println("WiFi connected");  
+  Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.client();                    // Initialize local Modbus Client
+  modbus.client(); // Initialize local Modbus Client
   pinMode(LED_BUILTIN, OUTPUT);
-  mb.addCoil(LED_COIL);           // Add Coil
-  mb.onSetCoil(LED_COIL, gc);     // Assign Callback on set the Coil
+  modbus.addCoil(LED_COIL);                 // Add Coil
+  modbus.onSetCoil(LED_COIL, onCoilChange); // Assign the coil callback.
 }
 
 void loop() {
-  if (mb.isConnected(remote)) {   // Check if connection to Modbus Slave is established
-    mb.pullCoil(remote, LED_COIL, LED_COIL);  // Initiate Read Coil from Modbus Slave
+  if (modbus.isConnected(remote)) {              // Check whether the Modbus server connection is established.
+    modbus.pullCoil(remote, LED_COIL, LED_COIL); // Read the coil from the Modbus server.
   } else {
-    mb.connect(remote);           // Try to connect if no connection
+    modbus.connect(remote); // Try to connect if necessary.
   }
-  mb.task();                      // Common local Modbus task
-  delay(10);                     // Polling interval
+  modbus.task(); // Common local Modbus task
+  delay(10);     // Polling interval
 }

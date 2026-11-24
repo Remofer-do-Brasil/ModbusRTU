@@ -1,36 +1,36 @@
 /*
-  Modbus-Arduino Example - Using request processing callback to control access to Hreg write operations
- 
+  Modbus-Arduino Example - Use request-processing callbacks to control holding-register writes.
+
   (c)2020 Alexander Emelianov (a.m.emelianov@gmail.com)
   https://github.com/emelianov/modbus-esp8266
 */
-
 
 #include <WiFi.h>
 
 #include <ModbusTCP.h>
 
-const uint16_t RO_FLAG = 100;  // Coil register to allow/disallow Hregs write
-const uint16_t RW_HREG = 200;  // Sample Hreg
+const uint16_t RO_FLAG = 100; // Coil that enables or disables holding-register writes.
+const uint16_t RW_HREG = 200; // Sample holding register.
 
-//ModbusIP object
-ModbusTCP mb;
+// Modbus TCP object.
+ModbusTCP modbus;
 
-Modbus::ResultCode cbPreRequest(Modbus::FunctionCode fc, const Modbus::RequestData data) {
-  Serial.printf("PRE Function: %02X\n", fc);
-  if ((fc == Modbus::FC_WRITE_REG || fc == Modbus::FC_WRITE_REGS) && mb.Coil(RO_FLAG))
-    return Modbus::EX_ILLEGAL_FUNCTION;
+Modbus::ResultCode cbPreRequest(Modbus::FunctionCode functionCode, const Modbus::RequestData data) {
+  (void)data;
+  Serial.printf("PRE Function: %02X\n", functionCode);
+  if ((functionCode == Modbus::FC_WRITE_REG || functionCode == Modbus::FC_WRITE_REGS) && modbus.Coil(RO_FLAG)) return Modbus::EX_ILLEGAL_FUNCTION;
   return Modbus::EX_SUCCESS;
 }
 
-Modbus::ResultCode cbPostRequest(Modbus::FunctionCode fc, const Modbus::RequestData data) {
-  Serial.printf("POST Function: %02X\n", fc);
+Modbus::ResultCode cbPostRequest(Modbus::FunctionCode functionCode, const Modbus::RequestData data) {
+  (void)data;
+  Serial.printf("POST Function: %02X\n", functionCode);
   return Modbus::EX_SUCCESS;
 }
 
 // Callback function for client connect. Returns true to allow connection.
-bool cbConn(IPAddress ip) {
-  Serial.println(ip);
+bool cbConn(IPAddress localIpAddress) {
+  Serial.println(localIpAddress);
   return true;
 }
 
@@ -49,16 +49,16 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.onConnect(cbConn);  // Add callback on connection event
-  mb.onRequest(cbPreRequest);
-  mb.onRequestSuccess(cbPostRequest);
-  mb.server();
+  modbus.onConnect(cbConn); // Assign the connection callback.
+  modbus.onRequest(cbPreRequest);
+  modbus.onRequestSuccess(cbPostRequest);
+  modbus.server();
 
-  mb.addCoil(RO_FLAG);
-  mb.addHreg(RW_HREG, 100);
+  modbus.addCoil(RO_FLAG);
+  modbus.addHreg(RW_HREG, 100);
 }
 
 void loop() {
-  mb.task();
+  modbus.task();
   delay(10);
 }

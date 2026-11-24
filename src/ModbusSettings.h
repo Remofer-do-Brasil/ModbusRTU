@@ -26,8 +26,8 @@ If not defined each Modbus object will have own registers set.
 
 /*
 #define ARDUINO_SAM_DUE_STL
-Use STL with Arduino Due. Was able to use with Arduino IDE but not with PlatformIO
-Also note STL issue workaround code in Modbus.cpp
+Use the STL with Arduino Due. It works with the Arduino IDE but not with PlatformIO.
+Also note the STL workaround in Modbus.cpp.
 */
 #if defined(ARDUINO_SAM_DUE)
 // #define ARDUINO_SAM_DUE_STL
@@ -35,7 +35,7 @@ Also note STL issue workaround code in Modbus.cpp
 
 /*
 #define MODBUS_USE_STL
-If defined C STL will be used.
+If defined, the C++ STL will be used.
 */
 #if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_ARCH_STM32) || defined(ARDUINO_SAM_DUE_STL) || defined(PICO_RP2040) || defined(PICO_RP2350)
 #define MODBUS_USE_STL
@@ -43,9 +43,9 @@ If defined C STL will be used.
 
 /*
 #define MODBUS_MAX_REGS     32
-If defined regisers count will be limited.
+If defined, the register count will be limited.
 */
-// Add limitation for specific STL implementation
+// Add a limit for specific STL implementations.
 #if defined(MODBUS_USE_STL) && (defined(ESP8266) || defined(ESP32) || defined(PICO_RP2040) || defined(PICO_RP2350))
 #undef MODBUS_MAX_REGS
 #define MODBUS_MAX_REGS 32
@@ -67,7 +67,7 @@ ModbusTCP and ModbusTLS timeouts
 #define MODBUSIP_TIMEOUT 1000
 Outgoing request timeout
 #define MODBUSIP_CONNECT_TIMEOUT 1000
-ESP32 only. Outgoing connection attempt timeout
+ESP32 only. Outgoing connection-attempt timeout.
 */
 #define MODBUSIP_TIMEOUT 1000
 // #define MODBUSIP_CONNECT_TIMEOUT 1000
@@ -76,7 +76,7 @@ ESP32 only. Outgoing connection attempt timeout
 #define MODBUSIP_MAX_TRANSACTIONS 16
 #if defined(ESP32)
 #define MODBUSIP_MAX_CLIENTS 8
-#else //|| defined(PICO_RP2040) || defined(PICO_RP2350)
+#else
 #define MODBUSIP_MAX_CLIENTS 4
 #endif
 #define MODBUSIP_UNIQUE_CLIENTS
@@ -85,8 +85,8 @@ ESP32 only. Outgoing connection attempt timeout
 
 #define MODBUSIP_DEBUG 1
 /*
-Allows to use DNS names as target
-Otherwise IP addresses only must be used
+Allows DNS names to be used as targets.
+Otherwise, only IP addresses may be used.
 #define MODBUS_IP_USE_DNS
 */
 // #define MODBUS_IP_USE_DNS
@@ -99,7 +99,7 @@ Otherwise IP addresses only must be used
 #define MODBUSRTU_MAX_READMS 100
 /*
 #define MODBUSRTU_REDE
-Enable using separate pins for RE DE
+Enable separate pins for RE and DE.
 */
 // #define MODBUSRTU_REDE
 
@@ -108,9 +108,9 @@ Enable using separate pins for RE DE
 #define MODBUSRTU_MAX_READ_US 1000UL * MODBUSRTU_MAX_READMS
 
 /*
-#defone MODBUSRTU_FLUSH_DELAY 1
-Set extraa delay after serial buffer flush before changing RE/DE pin state.
-Specified in chars. That is 1 is means to add delay enough to send 1 char at current port baudrate
+#define MODBUSRTU_FLUSH_DELAY 1
+Set an extra delay after flushing the serial buffer and before changing the RE/DE pin state.
+The value is specified in characters. A value of 1 adds enough delay to send one character at the current port baud rate.
 */
 // #define MODBUSRTU_FLUSH_DELAY 1
 
@@ -124,7 +124,7 @@ Specified in chars. That is 1 is means to add delay enough to send 1 char at cur
 #define MODBUSRTU_FLUSH_DELAY 1
 #endif
 
-// Limit resources usage for entry level boards
+// Limit resource usage on entry-level boards.
 #if defined(ARDUINO_UNO) || defined(ARDUINO_LEONARDO)
 #undef MODBUS_MAX_REGS
 #undef MODBUSIP_MAX_TRANSACTIONS

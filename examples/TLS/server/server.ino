@@ -2,7 +2,7 @@
   Modbus-Uni - Most complete Modbus Library for Arduino
 
   Modbus/TCP Security Server for ESP8266 Example
-  
+
   (c)2020 Alexander Emelianov (a.m.emelianov@gmail.com)
   https://github.com/emelianov/modbus-esp8266
   This code is licensed under the BSD New License. See LICENSE.txt for more info.
@@ -10,14 +10,14 @@
   https://github.com/sndnvaps/modbus-pico
 */
 
+#include <ModbusTLS.h>
 #include <WiFi.h>
 #include <time.h>
-#include <ModbusTLS.h>
 
 // The hardcoded certificate authority for this example.
-// Don't use it on your own apps!!!!!
+// Example certificate only. Replace it before using this code in an application.
 
-const char ca_cert[] PROGMEM = R"EOF(
+const char caCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIUM3r6zWNMv+GhjWwmfo14KZLQaDswDQYJKoZIhvcNAQEL
 BQAwGTEXMBUGA1UEAwwOMTkyLjE2OC4xMy4xMDMwHhcNMjYwMzE1MTIxMTQ2WhcN
@@ -40,7 +40,7 @@ ajOnpSrawW6PU2WWYfJccpALjBbKMew=
 )EOF";
 
 // The server's private key which must be kept secret
-const char server_private_key[] PROGMEM = R"EOF(
+const char serverPrivateKey[] PROGMEM = R"EOF(
 -----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEAqpElFVLavA/4liyqALA3VpirBhbdl4934dwpsadrRb74lYMD
 mCFornjcwoi8FBTmmwL0mtcBAwFGLBzsnSglrq7mrmAqdKLHr9fVMZJSFzPq3M+T
@@ -71,7 +71,7 @@ INpOEm3sy9CLLALihilxFUsGFe9JPxB3b9t0zflVznydcjGw3SQvovyh8JzvoPQ1
 )EOF";
 
 // The server's public certificate which must be shared
-const char server_cert[] PROGMEM = R"EOF(
+const char serverCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICuTCCAaECFA1QaDc3FpfpU9gLTat4GFW18ECrMA0GCSqGSIb3DQEBCwUAMBkx
 FzAVBgNVBAMMDjE5Mi4xNjguMTMuMTAzMB4XDTI2MDMxNTEyMTMxNFoXDTI3MDMx
@@ -92,21 +92,20 @@ K7AiCInPr6Y3970GGVL4Bwgy1yE7B+Yg9p+pWx0=
 
 )EOF";
 
-#define WIFI_SSID "TP-LINK_71A109"
+#define WIFI_SSID     "TP-LINK_71A109"
 #define WIFI_PASSWORD "447826004aZ"
 
 // Modbus Registers Offsets
-//const int TEST_HREG = 100;
-#define REG_TEMPERATURE 0  // 温度寄存器（放大10倍，25.5℃=255）
-#define REG_HUMIDITY 1     // 湿度寄存器（放大10倍，60.2%=602）
+// const int TEST_HREG = 100;
+#define REG_TEMPERATURE 0 // Temperature register, scaled by 10: 25.5 °C = 255.
+#define REG_HUMIDITY    1 // Humidity register, scaled by 10: 60.2% = 602.
 
-// 模拟温湿度数据（存储在寄存器中）
-uint16_t temperature = 256;  // 25.6℃（放大10倍存储）
-uint16_t humidity = 605;     // 60.5%（放大10倍存储）
+// Simulated temperature and humidity values stored at 10 times their displayed values.
+uint16_t temperature = 256; // 25.6 °C
+uint16_t humidity = 605;    // 60.5%
 
-
-//ModbusIP object
-ModbusTLS mb;
+// Modbus TLS object.
+ModbusTLS modbus;
 // Set time via NTP, as required for x.509 validation
 void setClock() {
 
@@ -126,8 +125,8 @@ void setClock() {
   Serial.print("Current time: ");
   Serial.print(asctime(&timeinfo));
 }
-bool c(IPAddress ip) {
-  Serial.println(ip);
+bool allowConnection(IPAddress remoteIpAddress) {
+  Serial.println(remoteIpAddress);
   return true;
 }
 void setup() {
@@ -144,34 +143,33 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   setClock();
-  
-  mb.server(MODBUSTLS_PORT, server_cert, server_private_key, ca_cert);
 
-  mb.addHreg(REG_TEMPERATURE);
-  mb.addHreg(REG_HUMIDITY);
+  modbus.server(MODBUSTLS_PORT, serverCertificate, serverPrivateKey, caCertificate);
 
-  Serial.println("Modbus TLS服务器已启动");
+  modbus.addHreg(REG_TEMPERATURE);
+  modbus.addHreg(REG_HUMIDITY);
+
+  Serial.println("Modbus TLS server started");
 }
 
 void loop() {
-  // 模拟数据更新（每1秒更新一次温湿度）
+  // Update the simulated temperature and humidity every two seconds.
   static uint32_t lastUpdate = 0;
   if (millis() - lastUpdate >= 2000) {
     lastUpdate = millis();
-    // 温度随机波动±0.5℃
+    // Vary the temperature by up to 0.5 °C.
     temperature = constrain(temperature + (random(-5, 6)), 200, 300);
-    // 湿度随机波动±0.5%
+    // Vary the humidity by up to 0.5%.
     humidity = constrain(humidity + (random(-5, 6)), 500, 700);
-    // 更新寄存器
+    // Update the registers.
 
-    mb.Hreg(REG_TEMPERATURE, temperature);
-    mb.Hreg(REG_HUMIDITY, humidity);
+    modbus.Hreg(REG_TEMPERATURE, temperature);
+    modbus.Hreg(REG_HUMIDITY, humidity);
 
-    // 调试输出
-    Serial.printf("Temperature: %.1f℃, Humidity: %.1f%%\n",
-                  temperature / 10.0, humidity / 10.0);
+    // Print diagnostic values.
+    Serial.printf("Temperature: %.1f℃, Humidity: %.1f%%\n", temperature / 10.0, humidity / 10.0);
   }
-  mb.task();
+  modbus.task();
 
   delay(10);
 }

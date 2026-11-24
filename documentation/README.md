@@ -1,14 +1,12 @@
 # FAQ
 
-This library allows your Arduino board to communicate via Modbus protocol. The Modbus is a protocol used in industrial automation and also can be used
-in other areas, such as home automation.
+This library allows an Arduino board to communicate using the Modbus protocol, which is commonly used in industrial and home automation.
 
-The Modbus generally uses serial RS-485 as physical layer (then called Modbus Serial) and TCP/IP via Ethernet or WiFi (Modbus TCP and Modbus TCP
-Security).
+Modbus commonly uses RS-485 as its physical layer (Modbus Serial) or TCP/IP over Ethernet or Wi-Fi (Modbus TCP and Modbus TCP Security).
 
 ---
 
-## Where to get documentation for the library?
+## Where can I find the library documentation?
 
 - [API](API.md)
 - [ModbusTCP](https://github.com/emelianov/modbus-esp8266/tree/master/examples/TCP-ESP#API)
@@ -16,7 +14,7 @@ Security).
 - [Callbacks](https://github.com/emelianov/modbus-esp8266/tree/master/examples/Callback/#Callback-API)
 - [Modbus Security](https://github.com/emelianov/modbus-esp8266/tree/master/examples/TLS)
 - [Modbus File operations](https://github.com/emelianov/modbus-esp8266/tree/master/examples/Files#File-block-API)
-- [Compile time settings](https://github.com/emelianov/modbus-esp8266/tree/master/src/ModbusSettings.h))
+- [Compile-time settings](https://github.com/emelianov/modbus-esp8266/tree/master/src/ModbusSettings.h)
 
 ---
 
@@ -32,52 +30,50 @@ Security).
 
 ---
 
-## How to send signed value (`int16_t`)?
+## How do I send a signed value (`int16_t`)?
 
-## How to send `float` or `uint32_t` values?
+## How do I send `float` or `uint32_t` values?
 
-Modbus standard defines only two types of data: bit value and 16-bit value. All other datatypes should be sent as multiple 16-bit values.
-
----
-
-## Value not read after `readCoil`/`readHreg`/etc
-
-The library is designed to execute calls async way. That is `readHreg()` function just sends read request to Modbus server device and exits. Responce
-is processed (as suun as it's arrive) by `task()`. `task()` is also async and exits if data hasn't arrive yet.
+The Modbus standard defines only bit values and 16-bit values. Send all other data types as multiple 16-bit values.
 
 ---
 
-## When calling `readCoil`/`readHreg`/`writeHreg`/etc multiple times only first of them executed
+## Why is a value not available immediately after `readCoil()`, `readHreg()`, or a similar call?
+
+The library operates asynchronously. For example, `readHreg()` sends a read request to the Modbus server and returns immediately. The `task()` method
+processes the response when it arrives and returns immediately if no data is available.
+
+---
+
+## Why is only the first of several consecutive read or write calls executed?
 
 ---
 
 ## Transactional callback returns _0xE4_ error
 
-It's timeout error. Suggestions below are applicable to persistent errors or frequently errors. Rare timeout errors may be normal in some
-considerations.
+This code indicates a timeout. The suggestions below apply to persistent or frequent failures; an occasional timeout may be normal.
 
 ### ModbusRTU
 
-Typically is indicates some kind of wiring or hardware problems.
+This typically indicates a wiring or hardware problem.
 
 - Check wiring.
-- Check that baudrate settings are identical for client and server.
-- Try to reduce it to 9600bps.
-- Try to use different power source for Arduino device.
-- Try to replace RS-485 tranceiver.
-- If using Modbus simulator software on PC check the result with alternative software.
+- Check that the client and server use the same baud rate.
+- Try reducing the baud rate to 9600 bps.
+- Try a different power source for the Arduino device.
+- Try to replace RS-485 transceiver.
+- If you use Modbus simulator software on a PC, compare the result with another simulator.
 
 ### ModbusTCP
 
-It maybe network problems. Use standard procedures as `ping` and firewall settings checks for diagnostics.
+This may indicate a network problem. Use standard diagnostics such as `ping` and check the firewall settings.
 
 ---
 
-## If it's possible to create ModbusTCP to ModbusRTU pass through bridge?
+## Is it possible to create a Modbus TCP-to-RTU pass-through bridge?
 
-Some ideas to implement full functional brodge may be taken from
-[this code](https://github.com/emelianov/modbus-esp8266/issues/101#issuecomment-755419095). Very limited implementation is available in
-[example](https://github.com/emelianov/modbus-esp8266/examples/bridge).
+See [this code](https://github.com/emelianov/modbus-esp8266/issues/101#issuecomment-755419095) for implementation ideas. A limited implementation is
+available in the [bridge examples](../examples/Bridge).
 
 ---
 

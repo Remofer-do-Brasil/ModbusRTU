@@ -1,6 +1,6 @@
 /*
-  Modbus-Arduino Example - Hreg multiple Holding register debug code (Modbus IP ESP8266/ESP32)
-  
+  Modbus-Arduino Example - Debug multiple holding registers (Modbus IP ESP8266/ESP32)
+
   Original library
   Copyright by André Sarmento Barbosa
   http://github.com/andresarmento/modbus-arduino
@@ -10,40 +10,39 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
 #include <WiFi.h>
 
 #include <ModbusIP_PICO.h>
 
 #define LEN 10
 
-//ModbusIP object
-ModbusIP mb;
+// ModbusIP object.
+ModbusIP modbus;
 
-// Callback function to read corresponding DI
-uint16_t cbRead(TRegister* reg, uint16_t val) {
+// Callback that logs a register read.
+uint16_t cbRead(TRegister* reg, uint16_t value) {
   Serial.print("Read. Reg RAW#: ");
   Serial.print(reg->address.address);
   Serial.print(" Old: ");
   Serial.print(reg->value);
   Serial.print(" New: ");
-  Serial.println(val);
-  return val;
+  Serial.println(value);
+  return value;
 }
-// Callback function to write-protect DI
-uint16_t cbWrite(TRegister* reg, uint16_t val) {
+// Callback that logs a register write.
+uint16_t cbWrite(TRegister* reg, uint16_t value) {
   Serial.print("Write. Reg RAW#: ");
   Serial.print(reg->address.address);
   Serial.print(" Old: ");
   Serial.print(reg->value);
   Serial.print(" New: ");
-  Serial.println(val);
-  return val;
+  Serial.println(value);
+  return value;
 }
 
 // Callback function for client connect. Returns true to allow connection.
-bool cbConn(IPAddress ip) {
-  Serial.println(ip);
+bool cbConn(IPAddress localIpAddress) {
+  Serial.println(localIpAddress);
   return true;
 }
 
@@ -62,16 +61,16 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.onConnect(cbConn);  // Add callback on connection event
-  mb.server();
+  modbus.onConnect(cbConn); // Assign the connection callback.
+  modbus.server();
 
-  if (!mb.addHreg(0, 0xF0F0, LEN)) Serial.println("Error");  // Add Hregs
-  mb.onGetHreg(0, cbRead, LEN);                              // Add callback on Coils value get
-  mb.onSetHreg(0, cbWrite, LEN);
+  if (!modbus.addHreg(0, 0xF0F0, LEN)) Serial.println("Error"); // Add holding registers.
+  modbus.onGetHreg(0, cbRead, LEN);                             // Assign the read callback to all holding registers.
+  modbus.onSetHreg(0, cbWrite, LEN);
 }
 
 void loop() {
-  //Call once inside loop() - all magic here
-  mb.task();
+  // Process Modbus events once per loop iteration.
+  modbus.task();
   delay(10);
 }

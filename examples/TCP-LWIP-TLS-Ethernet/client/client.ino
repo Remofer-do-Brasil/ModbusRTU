@@ -10,30 +10,28 @@
 
 #include <SPI.h>
 
-//#include <EthernetCompat.h>  //LWIP-Ethernet
-#include <time.h>
+// EthernetCompat.h is already included by ModbusLWIP_TLS_Ethernet.h.
 #include <ModbusLWIP_TLS_Ethernet.h>
+#include <time.h>
 
-//CS = 17
-//Int = 21
+// chipSelectPin = 17
+// interruptPin = 21
 ArduinoWiznet5500lwIP Ethernet(17, SPI, 21);
-//ArduinoWiznet5100lwIP Ethernet(17, SPI, 21);
-//ArduinoENC28J60lwIP Ethernet(17, SPI, 21);
+// ArduinoWiznet5100lwIP Ethernet(chipSelectPin, SPI, interruptPin);
+// ArduinoENC28J60lwIP Ethernet(chipSelectPin, SPI, interruptPin);
 
-const uint16_t REG = 0;               // Modbus Hreg Offset
-IPAddress remote(192, 168, 13, 103);  // Address of Modbus Slave device
-const int32_t showDelay = 2000;       // Show result every n'th mellisecond
+const uint16_t REG = 0;              // Holding-register offset.
+IPAddress remote(192, 168, 13, 103); // Modbus server address.
+const int32_t showDelay = 2000;      // Show the result every 2000 milliseconds.
 
 // Enter a MAC address and IP address for your controller below.
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE
-};
-IPAddress ip(192, 168, 13, 178);   // The IP address will be dependent on your local network:
-IPAddress myDns(192, 168, 13, 1);  //set the dns
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE };
+IPAddress localIpAddress(192, 168, 13, 178); // The IP address will be dependent on your local network:
+IPAddress myDns(192, 168, 13, 1);            // DNS server address.
 
 // The hardcoded certificate authority for this example.
-// Don't use it on your own apps!!!!!
-const char ca_cert[] PROGMEM = R"EOF(
+// Example certificate only. Replace it before using this code in an application.
+const char caCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICwjCCAaqgAwIBAgIUTz9NFtf8JkdIkrDroXVB/ANtqlYwDQYJKoZIhvcNAQEL
 BQAwEjEQMA4GA1UEAwwHcm9vdF9jYTAeFw0yMDA4MjcxMDI4MzFaFw0zMTExMTQx
@@ -54,7 +52,7 @@ yHObfUNN6saco1/f4OM4tzaQOKa+6U1iXVBTBjE2IHPchGqctBk=
 )EOF";
 
 // The client's private key which must be kept secret
-const char client_private_key[] PROGMEM = R"EOF(
+const char clientPrivateKey[] PROGMEM = R"EOF(
 -----BEGIN RSA PRIVATE KEY-----
 MIIEpQIBAAKCAQEAyFOAs6+OSYI+04lGxdDErOMnQuNUf6wdnUpcHG65o5mR5SZ9
 n4n3FQgbkB+Gv0gm1DQzl89t6djWR3i6XB1fE3rrw6HJqZSSLijaDfAT23mfiEuc
@@ -85,7 +83,7 @@ x7M6SvzBWzC7gzH/P94LxtqM22zzU0LszocV2j1UkxqBVXv0EYVjPB0=
 )EOF";
 
 // The server's public certificate which must be shared
-const char client_cert[] PROGMEM = R"EOF(
+const char clientCertificate[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIICqjCCAZICFEIh1S7CewqVDZ9B78fSCkMQDkN9MA0GCSqGSIb3DQEBCwUAMBIx
 EDAOBgNVBAMMB3Jvb3RfY2EwHhcNMjAwODI3MTAyODMxWhcNMzEwODEwMTAyODMx
@@ -106,7 +104,7 @@ hJmblVkcv6VRNS9JHDQ=
 )EOF";
 
 // The server's public certificate which must be shared
-const char server_pk[] PROGMEM = R"EOF(
+const char serverPublicKey[] PROGMEM = R"EOF(
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3SpcCq8sUhAbBztc+X69
 H+miV/Dxw9SH7X5Gtz09vOcEaDQnD2uXk6OXQUsiTPSYCqahrHZtjO1AQCWQBQUo
@@ -118,7 +116,7 @@ iQIDAQAB
 -----END PUBLIC KEY-----
 )EOF";
 
-ModbusEthernetTLS mb;  // Declare ModbusTCP instance
+ModbusEthernetTLS modbus; // Declare ModbusTCP instance
 
 void setClock() {
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -137,16 +135,15 @@ void setClock() {
   Serial.print(asctime(&timeinfo));
 }
 
-
 void setup() {
 
-  //SPI.setRX(16);
-  //SPI.setCS(17);
-  //SPI.setSCK(18);
-  //SPI.setTX(19);
-  //Intn = 21
+  // SPI.setRX(16);
+  // SPI.setCS(17);
+  // SPI.setSCK(18);
+  // SPI.setTX(19);
+  // interruptPin = 21
 
-  Serial.begin(115200);  // Open serial communications and wait for port to open
+  Serial.begin(115200); // Start serial communication.
 
   Serial.println("Initialize Ethernet with DHCP:");
   if (Ethernet.begin(mac) == 0) {
@@ -155,23 +152,22 @@ void setup() {
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
       Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
       while (true) {
-        delay(1);  // do nothing, no point running without Ethernet hardware
+        delay(1); // Wait because the application cannot continue without Ethernet hardware.
       }
     }
     if (Ethernet.linkStatus() == LinkOFF) {
       Serial.println("Ethernet cable is not connected.");
     }
-    // try to configure using IP address instead of DHCP:
-    Ethernet.begin(mac, ip, myDns);
+    // Configure a static IP address if DHCP fails.
+    Ethernet.begin(mac, localIpAddress, myDns);
   } else {
     Serial.print("  DHCP assigned IP ");
     Serial.println(Ethernet.localIP());
   }
 
-
-  delay(1000);  // give the Ethernet shield a second to initialize
+  delay(1000); // Give the Ethernet shield one second to initialize.
   setClock();
-  mb.client();  // Act as Modbus TCP Client
+  modbus.client(); // Act as Modbus TCP Client
   Serial.println("ModbusTCP Security-Ethernet客户端已启动");
 }
 
@@ -179,17 +175,17 @@ uint16_t res = 0;
 uint32_t showLast = 0;
 
 void loop() {
-  if (mb.isConnected(remote)) {      // Check if connection to Modbus Slave is established
-    mb.readHreg(remote, REG, &res);  // Initiate Read Hreg from Modbus Slave
+  if (modbus.isConnected(remote)) {     // Check whether the Modbus server connection is established.
+    modbus.readHreg(remote, REG, &res); // Read the holding register from the Modbus server.
     Serial.println(res);
     delay(1000);
   } else {
-    //mb.connectWithKnownKey(remote, MODBUSTLS_PORT, client_cert, client_private_key, server_pk);
-    mb.connect(remote, MODBUSTLS_PORT, client_cert, client_private_key, ca_cert);
+    // modbus.connectWithKnownKey(remote, MODBUSTLS_PORT, clientCertificate, clientPrivateKey, serverPublicKey);
+    modbus.connect(remote, MODBUSTLS_PORT, clientCertificate, clientPrivateKey, caCertificate);
   }
-  delay(100);                        // Pulling interval
-  mb.task();                         // Common local Modbus task
-  if (millis() - showLast > 1000) {  // Display register value every 5 seconds (with default settings)
+  delay(100);                       // Pulling interval
+  modbus.task();                    // Common local Modbus task
+  if (millis() - showLast > 1000) { // Display register value every 5 seconds (with default settings)
     showLast = millis();
     Serial.println("HReg = ");
     Serial.println(res);

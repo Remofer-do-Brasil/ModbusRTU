@@ -20,30 +20,30 @@
 #include "ModbusAPI.h"
 #include "ModbusTCPTemplate.h"
 
-#include <EthernetCompat.h> //for LWIP-Ethernet
+#include <EthernetCompat.h> // lwIP-Ethernet compatibility layer.
 
 using EthernetServerTLS = WiFiServerSecure;
 using EthernetClientTLS = WiFiClientSecure;
 
 class ModbusEthernetTLS : public ModbusAPI<ModbusTCPTemplate<EthernetServerTLS, EthernetClientTLS>> {
 private:
-  int8_t _connect(IPAddress ip, uint16_t port, const char* client_cert = nullptr, const char* client_private_key = nullptr) {
-    int8_t p = getFreeClient();
-    if (p < 0) return p;
-    tcpclient[p] = new EthernetClientTLS();
-    BIT_CLEAR(tcpServerConnection, p);
+  int8_t _connect(IPAddress ipAddress, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr) {
+    int8_t clientIndex = getFreeClient();
+    if (clientIndex < 0) return clientIndex;
+    tcpClients[clientIndex] = new EthernetClientTLS();
+    BIT_CLEAR(tcpServerConnection, clientIndex);
 
-    BearSSL::X509List* clientCertList = new BearSSL::X509List(client_cert);
-    BearSSL::PrivateKey* clientPrivKey = new BearSSL::PrivateKey(client_private_key);
-    tcpclient[p]->setClientRSACert(clientCertList, clientPrivKey);
-    tcpclient[p]->setBufferSizes(512, 512);
+    BearSSL::X509List* clientCertList = new BearSSL::X509List(clientCertificate);
+    BearSSL::PrivateKey* clientPrivKey = new BearSSL::PrivateKey(clientPrivateKey);
+    tcpClients[clientIndex]->setClientRSACert(clientCertList, clientPrivKey);
+    tcpClients[clientIndex]->setBufferSizes(512, 512);
 
-    return p;
+    return clientIndex;
   }
 #ifdef MODBUSIP_USE_DNS
-  static IPAddress resolver(const char* host) {
-    IPAddress remote_addr;
-    if (WiFi.hostByName(host, remote_addr)) return remote_addr;
+  static IPAddress resolveHost(const char* host) {
+    IPAddress remoteAddress;
+    if (WiFi.hostByName(host, remoteAddress)) return remoteAddress;
     return IPADDR_NONE;
   }
 #endif
@@ -51,59 +51,59 @@ public:
   ModbusEthernetTLS() : ModbusAPI() {
     defaultPort = MODBUSTLS_PORT;
 #ifdef MODBUSIP_USE_DNS
-    resolve = resolver;
+    resolver = resolveHost;
 #endif
   }
 
-  void server(uint16_t port, const char* server_cert = nullptr, const char* server_private_key = nullptr, const char* ca_cert = nullptr) {
+  void server(uint16_t port, const char* serverCertificate = nullptr, const char* serverPrivateKey = nullptr, const char* caCertificate = nullptr) {
     serverPort = port;
-    tcpserver = new EthernetServerTLS(serverPort);
-    BearSSL::X509List* serverCertList = new BearSSL::X509List(server_cert);
-    BearSSL::PrivateKey* serverPrivKey = new BearSSL::PrivateKey(server_private_key);
-    tcpserver->setRSACert(serverCertList, serverPrivKey);
-    if (ca_cert) {
-      BearSSL::X509List* trustedCA = new BearSSL::X509List(ca_cert);
-      tcpserver->setClientTrustAnchor(trustedCA);
+    tcpServer = new EthernetServerTLS(serverPort);
+    BearSSL::X509List* serverCertList = new BearSSL::X509List(serverCertificate);
+    BearSSL::PrivateKey* serverPrivKey = new BearSSL::PrivateKey(serverPrivateKey);
+    tcpServer->setRSACert(serverCertList, serverPrivKey);
+    if (caCertificate) {
+      BearSSL::X509List* trustedCA = new BearSSL::X509List(caCertificate);
+      tcpServer->setClientTrustAnchor(trustedCA);
     }
-    // tcpserver->setBufferSizes(512, 512);
-    tcpserver->begin();
+    // tcpServer->setBufferSizes(512, 512);
+    tcpServer->begin();
   }
 
-  bool connectWithKnownKey(IPAddress ip, uint16_t port, const char* client_cert = nullptr, const char* client_private_key = nullptr,
+  bool connectWithKnownKey(IPAddress ipAddress, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr,
                            const char* key = nullptr) {
-    if (getSlave(ip) >= 0) return true;
-    int8_t p = _connect(ip, port, client_cert, client_private_key);
+    if (getSlave(ipAddress) >= 0) return true;
+    int8_t clientIndex = _connect(ipAddress, port, clientCertificate, clientPrivateKey);
     BearSSL::PublicKey* clientPublicKey = new BearSSL::PublicKey(key);
-    tcpclient[p]->setKnownKey(clientPublicKey);
-    return tcpclient[p]->connect(ip, port);
+    tcpClients[clientIndex]->setKnownKey(clientPublicKey);
+    return tcpClients[clientIndex]->connect(ipAddress, port);
   }
 
 #ifdef MODBUSIP_USE_DNS
   bool
-  connect(String host, uint16_t port, const char* client_cert = nullptr, const char* client_private_key = nullptr, const char* ca_cert = nullptr) {
-    return connect(resolver(host.c_str()), port, client_cert, client_private_key, ca_cert);
+  connect(String host, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr, const char* caCertificate = nullptr) {
+    return connect(resolveHost(host.c_str()), port, clientCertificate, clientPrivateKey, caCertificate);
   }
-  bool connect(const char* host, uint16_t port, const char* client_cert = nullptr, const char* client_private_key = nullptr,
-               const char* ca_cert = nullptr) {
-    return connect(resolver(host), port, client_cert, client_private_key, ca_cert);
+  bool connect(const char* host, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr,
+               const char* caCertificate = nullptr) {
+    return connect(resolveHost(host), port, clientCertificate, clientPrivateKey, caCertificate);
   }
 #endif
   bool
-  connect(IPAddress ip, uint16_t port, const char* client_cert = nullptr, const char* client_private_key = nullptr, const char* ca_cert = nullptr) {
-    if (!ip) return false;
-    if (getSlave(ip) >= 0) return false;
-    int8_t p = _connect(ip, port, client_cert, client_private_key);
-    if (p < 0) return false;
+  connect(IPAddress ipAddress, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr, const char* caCertificate = nullptr) {
+    if (!ipAddress) return false;
+    if (getSlave(ipAddress) >= 0) return false;
+    int8_t clientIndex = _connect(ipAddress, port, clientCertificate, clientPrivateKey);
+    if (clientIndex < 0) return false;
 
-    if (ca_cert) {
-      BearSSL::X509List* trustedCA = new BearSSL::X509List(ca_cert);
-      tcpclient[p]->setTrustAnchors(trustedCA);
+    if (caCertificate) {
+      BearSSL::X509List* trustedCA = new BearSSL::X509List(caCertificate);
+      tcpClients[clientIndex]->setTrustAnchors(trustedCA);
     } else {
-      tcpclient[p]->setInsecure();
+      tcpClients[clientIndex]->setInsecure();
     }
 
-    // return tcpclient[p]->connect(ip, port);
-    if (!tcpclient[p]->connect(ip, port)) return false;
+    // return tcpClients[clientIndex]->connect(ipAddress, port);
+    if (!tcpClients[clientIndex]->connect(ipAddress, port)) return false;
     return true;
   }
 };

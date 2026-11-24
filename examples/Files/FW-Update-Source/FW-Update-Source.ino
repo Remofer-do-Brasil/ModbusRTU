@@ -1,43 +1,45 @@
 /*
   Modbus Library for Arduino Example - Modbus RTU Firmware Update - ESP8266/ESP32
-  Update main node to update from.
-  Hosts simple web-server to upload firmware file and writes it to update target.
-  
+  Firmware-update source node.
+  Hosts a simple web server that accepts a firmware file and sends it to the target node.
+
   (c)2021 Alexander Emelianov (a.m.emelianov@gmail.com)
   https://github.com/emelianov/modbus-esp8266
 
   (c)2026 Jimes Yang (admin@sndnvaps.com)
-  adapt to support Raspberry picow/pico2w
+  Adapted to support Raspberry Pi Pico W/Pico 2 W.
 */
 #include <ModbusRTU_PICO.h>
-#include <WiFi.h>
-#include <WebServer.h>
 #include <Updater.h>
+#include <WebServer.h>
+#include <WiFi.h>
 
 #if defined(PICO_RP2040) || defined(PICO_RP2350)
-#include <SoftwareSerial.h>  //SoftwareSerial for Raspberry PicoW/Pico2W
+#include <SoftwareSerial.h> // SoftwareSerial for Raspberry Pi Pico W/Pico 2 W.
 
-// SoftwareSerial S(26, 27, false);
+// SoftwareSerial softwareSerial(26, 27, false);
 
-// receivePin, transmitPin, inverse_logic
-// connect RX to gp4 (GPIO4, picow pin 4), TX to gp5 (GPIO5, picow pin 5)
-SoftwareSerial S(4, 5);
+// Constructor arguments: receivePin, transmitPin, inverseLogic.
+// Connect RX to GP4 (GPIO4) and TX to GP5 (GPIO5).
+SoftwareSerial softwareSerial(4, 5);
 #endif
 
 ModbusRTU rtu;
 WebServer web(80);
 
 #define UPDATE_ENABLE 301
-#define UPDATE_FILE 301
-#define SLAVE_ID 1
-#define BLOCK_SIZE 64
+#define UPDATE_FILE   301
+#define SLAVE_ID      1
+#define BLOCK_SIZE    64
 
 uint32_t written = 0;
 bool updating = false;
 Modbus::ResultCode result = Modbus::EX_GENERAL_FAILURE;
-bool cb(Modbus::ResultCode event, uint16_t transactionId, void* data) {  // Modbus Transaction callback
-  if (event != Modbus::EX_SUCCESS)                                       // If transaction got an error
-    Serial.printf("Modbus result: %02X\n", event);                       // Display Modbus error code
+bool transactionCallback(Modbus::ResultCode event, uint16_t transactionId, void* data) { // Modbus transaction callback.
+  (void)transactionId;
+  (void)data;
+  if (event != Modbus::EX_SUCCESS)                 // If the transaction failed,
+    Serial.printf("Modbus result: %02X\n", event); // display the Modbus error code.
   result = event;
   return true;
 }
@@ -70,7 +72,7 @@ void updateUploadHandle() {
   switch (upload.status) {
     case UPLOAD_FILE_START:
       result = Modbus::EX_GENERAL_FAILURE;
-      rtu.writeCoil(SLAVE_ID, UPDATE_ENABLE, true, cb);
+      rtu.writeCoil(SLAVE_ID, UPDATE_ENABLE, true, transactionCallback);
       while (rtu.server()) {
         rtu.task();
         yield();
@@ -80,15 +82,14 @@ void updateUploadHandle() {
       Serial.print("O");
       break;
     case UPLOAD_FILE_WRITE:
-      if (!updating)
-        break;
+      if (!updating) break;
       Serial.print("o");
       data = upload.buf;
       remaining = upload.currentSize / 2;
       while (remaining) {
         uint16_t amount = (remaining > BLOCK_SIZE) ? BLOCK_SIZE : remaining;
         result = Modbus::EX_GENERAL_FAILURE;
-        if (!rtu.writeFileRec(SLAVE_ID, UPDATE_FILE, 0, amount, data, cb)) {
+        if (!rtu.writeFileRec(SLAVE_ID, UPDATE_FILE, 0, amount, data, transactionCallback)) {
           updating = false;
           Serial.println("X:send");
           break;
@@ -109,8 +110,7 @@ void updateUploadHandle() {
       }
       break;
     case UPLOAD_FILE_END:
-      if (!updating)
-        break;
+      if (!updating) break;
       rtu.writeCoil(SLAVE_ID, UPDATE_ENABLE, false);
       while (rtu.server()) {
         rtu.task();
@@ -147,8 +147,8 @@ void setup() {
   Serial.println(WiFi.localIP());
 
 #if defined(PICO_RP2040) || defined(PICO_RP2350)
-  S.begin(115200, SERIAL_8N1);
-  rtu.begin(&S);
+  softwareSerial.begin(115200, SERIAL_8N1);
+  rtu.begin(&softwareSerial);
 #endif
 
   web.on("/update", HTTP_POST, updateHandle, updateUploadHandle);

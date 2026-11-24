@@ -1,22 +1,22 @@
 /*
   ModbusRTU ESP8266/ESP32
-  ModbusTCP to ModbusRTU bridge with on-device ModbusRTU simulator
+  Modbus TCP-to-RTU bridge with an on-device Modbus RTU simulator.
 */
 
 #include <WiFi.h>
 
-#include <ModbusTCP.h>
 #include <ModbusRTU.h>
-//#include <SoftwareSerial.h>
-//SoftwareSerial S(13, 15);
+#include <ModbusTCP.h>
+// #include <SoftwareSerial.h>
+// SoftwareSerial softwareSerial(13, 15);
 #include <StreamBuf.h>
 #define BSIZE 1024
 uint8_t buf1[BSIZE];
 uint8_t buf2[BSIZE];
-StreamBuf S1(buf1, BSIZE);
-StreamBuf S2(buf2, BSIZE);
-DuplexBuf P1(&S1, &S2);
-DuplexBuf P2(&S2, &S1);
+StreamBuf firstStreamBuffer(buf1, BSIZE);
+StreamBuf secondStreamBuffer(buf2, BSIZE);
+DuplexBuf firstDuplexBuffer(&firstStreamBuffer, &secondStreamBuffer);
+DuplexBuf secondDuplexBuffer(&secondStreamBuffer, &firstStreamBuffer);
 ModbusRTU sym;
 
 int DE_RE = 2;
@@ -24,84 +24,83 @@ int DE_RE = 2;
 ModbusRTU rtu;
 ModbusTCP tcp;
 
-IPAddress srcIp;
+IPAddress sourceIpAddress;
 
+uint16_t activeTransactionId = 0; // Currently executed ModbusTCP transaction
+uint8_t activeServerId = 0;       // Current request slave
 
-uint16_t transRunning = 0;  // Currently executed ModbusTCP transaction
-uint8_t slaveRunning = 0;   // Current request slave
- 
-bool cbTcpTrans(Modbus::ResultCode event, uint16_t transactionId, void* data) { // Modbus Transaction callback
-  if (event != Modbus::EX_SUCCESS)                  // If transaction got an error
-    Serial.printf("Modbus result: %02X, Mem: %d\n", event, ESP.getFreeHeap());  // Display Modbus error code (222527)
-  if (event == Modbus::EX_TIMEOUT) {    // If Transaction timeout took place
-    tcp.disconnect(tcp.eventSource());          // Close connection
+bool cbTcpTrans(Modbus::ResultCode event, uint16_t transactionId, void* data) { // Modbus transaction callback.
+  (void)transactionId;
+  (void)data;
+  if (event != Modbus::EX_SUCCESS)                                             // If the transaction failed,
+    Serial.printf("Modbus result: %02X, Mem: %d\n", event, ESP.getFreeHeap()); // display the Modbus error code.
+  if (event == Modbus::EX_TIMEOUT) {                                           // If the transaction timed out,
+    tcp.disconnect(tcp.eventSource());                                         // close the connection.
   }
   return true;
 }
 
 bool cbRtuTrans(Modbus::ResultCode event, uint16_t transactionId, void* data) {
-    if (event != Modbus::EX_SUCCESS)                  // If transaction got an error
-      Serial.printf("Modbus result: %02X, Mem: %d\n", event, ESP.getFreeHeap());  // Display Modbus error code (222527)
-    return true;
+  (void)transactionId;
+  (void)data;
+  if (event != Modbus::EX_SUCCESS)                                             // If the transaction failed,
+    Serial.printf("Modbus result: %02X, Mem: %d\n", event, ESP.getFreeHeap()); // display the Modbus error code.
+  return true;
 }
 
-
-// Callback receives raw data 
+// Receive raw data from Modbus TCP.
 Modbus::ResultCode cbTcpRaw(uint8_t* data, uint8_t len, void* custom) {
-  auto src = (Modbus::frame_arg_t*) custom;
-  
+  auto src = (Modbus::frame_arg_t*)custom;
+
   Serial.print("TCP IP: ");
-  Serial.print(IPAddress(src->ipaddr));
+  Serial.print(IPAddress(src->ipAddress));
   Serial.printf(" Fn: %02X, len: %d \n\r", data[0], len);
 
-  if (transRunning) { // Note that we can't process new requests from TCP-side while waiting for responce from RTU-side.
-    tcp.setTransactionId(transRunning); // Set transaction id as per incoming request
-    tcp.errorResponce(src->ipaddr, (Modbus::FunctionCode)data[0], Modbus::EX_SLAVE_DEVICE_BUSY);
+  if (activeTransactionId) {                   // New TCP requests cannot be processed while awaiting an RTU response.
+    tcp.setTransactionId(activeTransactionId); // Restore the transaction identifier from the incoming request.
+    tcp.errorResponse(src->ipAddress, (Modbus::FunctionCode)data[0], Modbus::EX_SLAVE_DEVICE_BUSY);
     return Modbus::EX_SLAVE_DEVICE_BUSY;
   }
 
-  rtu.rawRequest(slaveRunning, data, len, cbRtuTrans);
-  
+  rtu.rawRequest(activeServerId, data, len, cbRtuTrans);
+
   if (src->unitId) {
-    tcp.setTransactionId(transRunning); // Set transaction id as per incoming request
+    tcp.setTransactionId(activeTransactionId); // Restore the transaction identifier from the incoming request.
 
-    //uint16_t succeed = tcp.rawResponce(src->ipaddr, data, len, slaveRunning);
+    // uint16_t succeed = tcp.rawResponse(src->ipAddress, data, len, activeServerId);
 
-    tcp.errorResponce(src->ipaddr, (Modbus::FunctionCode)data[0], Modbus::EX_ACKNOWLEDGE);
+    tcp.errorResponse(src->ipAddress, (Modbus::FunctionCode)data[0], Modbus::EX_ACKNOWLEDGE);
     return Modbus::EX_ACKNOWLEDGE;
   }
-  
-  srcIp = src->ipaddr;
-  
-  slaveRunning = src->slaveId;
-  
-  transRunning = src->transactionId;
-  
-  return Modbus::EX_SUCCESS;  
-  
+
+  sourceIpAddress = src->ipAddress;
+
+  activeServerId = src->slaveId;
+
+  activeTransactionId = src->transactionId;
+
+  return Modbus::EX_SUCCESS;
 }
 
-
-// Callback receives raw data from ModbusTCP and sends it on behalf of slave (slaveRunning) to master
+// Receive raw data from Modbus TCP and forward it to the active Modbus RTU client.
 Modbus::ResultCode cbRtuRaw(uint8_t* data, uint8_t len, void* custom) {
-  auto src = (Modbus::frame_arg_t*) custom;
-  tcp.setTransactionId(transRunning); // Set transaction id as per incoming request
-  uint16_t succeed = tcp.rawResponce(srcIp, data, len, slaveRunning);
-  if (!succeed){
+  auto src = (Modbus::frame_arg_t*)custom;
+  tcp.setTransactionId(activeTransactionId); // Restore the transaction identifier from the incoming request.
+  uint16_t succeed = tcp.rawResponse(sourceIpAddress, data, len, activeServerId);
+  if (!succeed) {
     Serial.print("fail");
   }
-  Serial.printf("RTU Slave: %d, Fn: %02X, len: %d, ", src->slaveId, data[0], len);
-  Serial.print("Response TCP IP: ");
-  Serial.println(srcIp);
-  
-  transRunning = 0;
-  slaveRunning = 0;
+  Serial.printf("RTU server: %d, function: %02X, length: %d, ", src->slaveId, data[0], len);
+  Serial.print("TCP response IP: ");
+  Serial.println(sourceIpAddress);
+
+  activeTransactionId = 0;
+  activeServerId = 0;
   return Modbus::EX_PASSTHROUGH;
 }
 
-
 void setup() {
-  Serial.begin(115000);
+  Serial.begin(115200);
   WiFi.begin("E2", "*****");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -110,21 +109,21 @@ void setup() {
   Serial.println("");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-    
-  tcp.server(); // Initialize ModbusTCP to pracess as server
-  tcp.onRaw(cbTcpRaw); // Assign raw data processing callback
-  
-  //S.begin(19200, SWSERIAL_8E1);
-  //rtu.begin(&S, DE_RE);  // Specify RE_DE control pin
-  sym.begin((Stream*)&P2);
+
+  tcp.server();        // Initialize the Modbus TCP server.
+  tcp.onRaw(cbTcpRaw); // Assign the raw-data callback.
+
+  // softwareSerial.begin(19200, SWSERIAL_8E1);
+  // rtu.begin(&serialPort, DE_RE); // Specify the RE/DE control pin.
+  sym.begin((Stream*)&secondDuplexBuffer);
   sym.slave(1);
   sym.addHreg(1, 100);
-  rtu.begin((Stream*)&P1);  // Specify RE_DE control pin
-  rtu.master(); // Initialize ModbusRTU as master
-  rtu.onRaw(cbRtuRaw); // Assign raw data processing callback
+  rtu.begin((Stream*)&firstDuplexBuffer); // No RE/DE control pin is required for the simulated link.
+  rtu.client();                           // Initialize the Modbus RTU client.
+  rtu.onRaw(cbRtuRaw);                    // Assign the raw-data callback.
 }
 
-void loop() { 
+void loop() {
   sym.task();
   rtu.task();
   tcp.task();

@@ -22,13 +22,13 @@ using EthernetUDP = WiFiUDP;
 class ModbusTCP : public ModbusAPI<ModbusTCPTemplate<WiFiServer, WiFiClient>> {
 #if defined(MODBUSIP_USE_DNS)
 private:
-  static IPAddress resolver(const char* host) {
-    IPAddress remote_addr;
-    if (WiFi.hostByName(host, remote_addr)) return remote_addr;
+  static IPAddress resolveHost(const char* host) {
+    IPAddress remoteAddress;
+    if (WiFi.hostByName(host, remoteAddress)) return remoteAddress;
     return IPADDR_NONE;
   }
 
 public:
-  ModbusTCP() : ModbusAPI() { resolve = resolver; }
+  ModbusTCP() : ModbusAPI() { resolver = resolveHost; }
 #endif
 };

@@ -6,14 +6,13 @@
   https://github.com/emelianov/modbus-esp8266
 */
 
-
-#include <WiFi.h>
 #include <ModbusIP_PICO.h>
+#include <WiFi.h>
 
-const int REG = 528;                 // Modbus Hreg Offset
-IPAddress remote(192, 168, 30, 13);  // Address of Modbus Slave device
+const int REG = 528;                // Holding-register offset.
+IPAddress remote(192, 168, 30, 13); // Modbus server address.
 
-ModbusIP mb;  //ModbusIP object
+ModbusIP modbus; // ModbusIP object.
 
 void setup() {
   Serial.begin(115200);
@@ -30,21 +29,21 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.client();
+  modbus.client();
 }
 
 uint16_t res = 0;
 
 void loop() {
-  if (mb.isConnected(remote)) {                       // Check if connection to Modbus Slave is established
-    uint16_t trans = mb.readHreg(remote, REG, &res);  // Initiate Read Hreg from Modbus Server
-    while (mb.isTransaction(trans)) {                 // Check if transaction is active
-      mb.task();
+  if (modbus.isConnected(remote)) {                      // Check whether the Modbus server connection is established.
+    uint16_t trans = modbus.readHreg(remote, REG, &res); // Initiate Read Hreg from Modbus Server
+    while (modbus.isTransaction(trans)) {                // Check if transaction is active
+      modbus.task();
       delay(10);
     }
-    Serial.println(res);  // At this point res is filled with responce value
+    Serial.println(res); // At this point res is filled with response value
   } else {
-    mb.connect(remote);  // Try to connect if no connection
+    modbus.connect(remote); // Try to connect if necessary.
   }
   delay(100);
 }

@@ -26,10 +26,10 @@ static inline uint16_t __swap_16(uint16_t num) { return (num >> 8) | (num << 8);
   (TAddress) { TAddress::IREG, addressValue }
 #define HREG(addressValue)                                                                                                                           \
   (TAddress) { TAddress::HREG, addressValue }
-#define BIT_VAL(bitValue)    ((bitValue) ? 0xFF00 : 0x0000)
-#define BIT_BOOL(bitValue)   ((bitValue) == 0xFF00)
-#define COIL_VAL(coilValue)  ((coilValue) ? 0xFF00 : 0x0000)
-#define COIL_BOOL(coilValue) ((coilValue) == 0xFF00)
+#define BIT_VAL(bitValue)     ((bitValue) ? 0xFF00 : 0x0000)
+#define BIT_BOOL(bitValue)    ((bitValue) == 0xFF00)
+#define COIL_VAL(coilValue)   ((coilValue) ? 0xFF00 : 0x0000)
+#define COIL_BOOL(coilValue)  ((coilValue) == 0xFF00)
 #define ISTS_VAL(inputValue)  ((inputValue) ? 0xFF00 : 0x0000)
 #define ISTS_BOOL(inputValue) ((inputValue) == 0xFF00)
 
@@ -249,12 +249,12 @@ protected:
   bool cbEnabled = true;
   uint16_t callback(TRegister* reg, uint16_t value, TCallback::CallbackType callbackType);
   virtual TRegister* searchRegister(TAddress addr);
-  void exceptionResponse(FunctionCode functionCode, ResultCode exceptionCode);                  // Fills _frame with a response.
-  void successResponse(TAddress startRegister, uint16_t outputCount, FunctionCode functionCode); // Fills _frame with a response.
+  void exceptionResponse(FunctionCode functionCode, ResultCode exceptionCode);                    // Fills _frame with a response.
+  void successResponse(TAddress startRegister, uint16_t outputCount, FunctionCode functionCode);  // Fills _frame with a response.
   void successResponce(TAddress startRegister, uint16_t outputCount, FunctionCode functionCode) { // Deprecated spelling.
     successResponse(startRegister, outputCount, functionCode);
   }
-  void slavePDU(uint8_t* frame); // Processes a server request.
+  void slavePDU(uint8_t* frame);                                                                           // Processes a server request.
   void masterPDU(uint8_t* frame, uint8_t* sourceFrame, TAddress startRegister, uint8_t* output = nullptr); // For Master
   // frame - data received from the server
   // sourceFrame - data sent to the server

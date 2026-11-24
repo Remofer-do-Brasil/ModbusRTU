@@ -9,10 +9,7 @@
 #pragma once
 #include "Modbus.h"
 
-enum ModbusTransportMode {
-  MODE_TCP,
-  MODE_UDP
-};
+enum ModbusTransportMode { MODE_TCP, MODE_UDP };
 using mode_type = ModbusTransportMode; // Deprecated type name retained for source compatibility.
 
 #define BIT_SET(value, bitIndex)   ((value) |= (1ULL << (bitIndex)))
@@ -93,10 +90,12 @@ public:
   // MODE = MODE_UDP
   void setMode(ModbusTransportMode mode = MODE_TCP);
 
-  uint16_t send(String host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr, bool waitResponse = true);
-  uint16_t
-  send(const char* host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr, bool waitResponse = true);
-  uint16_t send(IPAddress ipAddress, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr, bool waitResponse = true);
+  uint16_t send(String host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr,
+                bool waitResponse = true);
+  uint16_t send(const char* host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr,
+                bool waitResponse = true);
+  uint16_t send(IPAddress ipAddress, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr,
+                bool waitResponse = true);
 
 public:
   ModbusTCPTemplate();
@@ -389,7 +388,8 @@ template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::ta
 }
 
 template <class SERVER, class CLIENT>
-uint16_t ModbusTCPTemplate<SERVER, CLIENT>::send(IPAddress ipAddress, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
+uint16_t ModbusTCPTemplate<SERVER, CLIENT>::send(IPAddress ipAddress, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit,
+                                                 uint8_t* data, bool waitResponse) {
   MbapHeader mbapHeader;
   uint16_t result = 0;
 
@@ -471,19 +471,24 @@ cleanup:
 }
 
 template <class SERVER, class CLIENT>
-uint16_t ModbusTCPTemplate<SERVER, CLIENT>::send(String host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
+uint16_t ModbusTCPTemplate<SERVER, CLIENT>::send(String host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data,
+                                                 bool waitResponse) {
   return send(resolver(host.c_str()), startRegister, callbackFunction, unit, data, waitResponse);
 }
 
 template <class SERVER, class CLIENT>
-uint16_t
-ModbusTCPTemplate<SERVER, CLIENT>::send(const char* host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
+uint16_t ModbusTCPTemplate<SERVER, CLIENT>::send(const char* host, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit,
+                                                 uint8_t* data, bool waitResponse) {
   return send(resolver(host), startRegister, callbackFunction, unit, data, waitResponse);
 }
 
-template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::onConnect(cbModbusConnect callbackFunction) { connectCallback = callbackFunction; }
+template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::onConnect(cbModbusConnect callbackFunction) {
+  connectCallback = callbackFunction;
+}
 
-template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::onDisconnect(cbModbusConnect callbackFunction) { disconnectCallback = callbackFunction; }
+template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::onDisconnect(cbModbusConnect callbackFunction) {
+  disconnectCallback = callbackFunction;
+}
 
 template <class SERVER, class CLIENT> void ModbusTCPTemplate<SERVER, CLIENT>::cleanupConnections() {
   for (uint8_t index = 0; index < MODBUSIP_MAX_CLIENTS; index++) {
@@ -527,17 +532,21 @@ template <class SERVER, class CLIENT> int8_t ModbusTCPTemplate<SERVER, CLIENT>::
 
 template <class SERVER, class CLIENT> int8_t ModbusTCPTemplate<SERVER, CLIENT>::getSlave(IPAddress ipAddress) {
   for (uint8_t index = 0; index < MODBUSIP_MAX_CLIENTS; index++)
-    if (tcpClients[index] && tcpClients[index]->connected() && tcpClients[index]->remoteIP() == ipAddress && !BIT_CHECK(tcpServerConnection, index)) return index;
+    if (tcpClients[index] && tcpClients[index]->connected() && tcpClients[index]->remoteIP() == ipAddress && !BIT_CHECK(tcpServerConnection, index))
+      return index;
   return -1;
 }
 
 template <class SERVER, class CLIENT> int8_t ModbusTCPTemplate<SERVER, CLIENT>::getMaster(IPAddress ipAddress) {
   for (uint8_t index = 0; index < MODBUSIP_MAX_CLIENTS; index++)
-    if (tcpClients[index] && tcpClients[index]->connected() && tcpClients[index]->remoteIP() == ipAddress && BIT_CHECK(tcpServerConnection, index)) return index;
+    if (tcpClients[index] && tcpClients[index]->connected() && tcpClients[index]->remoteIP() == ipAddress && BIT_CHECK(tcpServerConnection, index))
+      return index;
   return -1;
 }
 
-template <class SERVER, class CLIENT> bool ModbusTCPTemplate<SERVER, CLIENT>::isTransaction(uint16_t transactionIdentifier) { return searchTransaction(transactionIdentifier) != nullptr; }
+template <class SERVER, class CLIENT> bool ModbusTCPTemplate<SERVER, CLIENT>::isTransaction(uint16_t transactionIdentifier) {
+  return searchTransaction(transactionIdentifier) != nullptr;
+}
 #if defined(MODBUSIP_USE_DNS)
 template <class SERVER, class CLIENT> bool ModbusTCPTemplate<SERVER, CLIENT>::isConnected(String host) { return isConnected(resolver(host.c_str())); }
 

@@ -79,8 +79,8 @@ public:
   }
 
 #ifdef MODBUSIP_USE_DNS
-  bool
-  connect(String host, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr, const char* caCertificate = nullptr) {
+  bool connect(String host, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr,
+               const char* caCertificate = nullptr) {
     return connect(resolveHost(host.c_str()), port, clientCertificate, clientPrivateKey, caCertificate);
   }
   bool connect(const char* host, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr,
@@ -88,8 +88,8 @@ public:
     return connect(resolveHost(host), port, clientCertificate, clientPrivateKey, caCertificate);
   }
 #endif
-  bool
-  connect(IPAddress ipAddress, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr, const char* caCertificate = nullptr) {
+  bool connect(IPAddress ipAddress, uint16_t port, const char* clientCertificate = nullptr, const char* clientPrivateKey = nullptr,
+               const char* caCertificate = nullptr) {
     if (!ipAddress) return false;
     if (getSlave(ipAddress) >= 0) return false;
     int8_t clientIndex = _connect(ipAddress, port, clientCertificate, clientPrivateKey);

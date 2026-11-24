@@ -15,7 +15,7 @@ protected:
 #ifdef MODBUSRTU_REDE
   int16_t _rxPin = -1;
 #endif
-  bool _direct = true; // Transmit control logic (true=direct, false=inverse)
+  bool _direct = true;       // Transmit control logic (true=direct, false=inverse)
   uint32_t _interFrameDelay; // Inter-frame delay in microseconds.
 #ifdef MODBUSRTU_FLUSH_DELAY
   uint32_t _characterSendTime; // Character transmission time.
@@ -30,8 +30,8 @@ protected:
   TAddress _sentReg = COIL(0);
   uint8_t sourceAddress = 0;
 
-  uint16_t
-  send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr, bool waitResponse = true);
+  uint16_t send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit = MODBUSIP_UNIT, uint8_t* data = nullptr,
+                bool waitResponse = true);
   // Prepare and send a Modbus RTU frame. The _frame buffer and _len must contain the Modbus data.
   // slaveId - server identifier
   // startRegister - first local register in which to store returned data; ignored for writes to a server

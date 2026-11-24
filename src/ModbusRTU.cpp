@@ -166,7 +166,8 @@ bool ModbusRTUTemplate::rawSend(uint8_t slaveId, uint8_t* frame, uint8_t len) {
   return true;
 }
 
-uint16_t ModbusRTUTemplate::send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
+uint16_t
+ModbusRTUTemplate::send(uint8_t slaveId, TAddress startRegister, cbTransaction callbackFunction, uint8_t unit, uint8_t* data, bool waitResponse) {
   (void)unit; // A Modbus RTU frame has no TCP unit-identifier field.
   bool result = false;
   if ((!isMaster || !_slaveId) && _len && _frame) { // Check if waiting for previous request result and _frame filled
@@ -219,8 +220,8 @@ void ModbusRTUTemplate::task() {
   }
 
   bool validFrame = true;
-  sourceAddress = _port->read();    // The first byte contains the server identifier.
-  _len--;                           // Exclude the server-identifier byte.
+  sourceAddress = _port->read();   // The first byte contains the server identifier.
+  _len--;                          // Exclude the server-identifier byte.
   if (isMaster && _slaveId == 0) { // Check whether a server identifier is set.
     validFrame = false;
   }
@@ -236,7 +237,7 @@ void ModbusRTUTemplate::task() {
 
   free(_frame); // Just in case
   _frame = (uint8_t*)malloc(_len);
-  if (!_frame) { // Failed to allocate the buffer.
+  if (!_frame) {                                                  // Failed to allocate the buffer.
     for (uint8_t index = 0; index < _len; index++) _port->read(); // Discard the packet.
     _len = 0;
     if (isMaster) cleanup();

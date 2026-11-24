@@ -15,18 +15,17 @@ public:
           template <typename TYPEID>
           uint16_t write(TYPEID target, TAddress reg, bool value, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
           template <typename TYPEID>
-          uint16_t write(TYPEID target, TAddress reg, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
-          template <typename TYPEID>
-          uint16_t write(TYPEID target, TAddress reg, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
-          template <typename TYPEID>
-          uint16_t read(TYPEID target, TAddress reg, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
-          template <typename TYPEID>
-          uint16_t read(TYPEID target, TAddress reg, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+          uint16_t write(TYPEID target, TAddress reg, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t
+     unit = MODBUSIP_UNIT); template <typename TYPEID> uint16_t write(TYPEID target, TAddress reg, bool* value, uint16_t registerCount = 1,
+     cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT); template <typename TYPEID> uint16_t read(TYPEID target, TAddress reg,
+     uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT); template <typename TYPEID>
+          uint16_t read(TYPEID target, TAddress reg, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit =
+     MODBUSIP_UNIT);
 
           template <typename TYPEID>
-          uint16_t push(TYPEID target, TAddress destination, TAddress from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
-          template <typename TYPEID>
-          uint16_t pull(TYPEID target, TAddress from, TAddress destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+          uint16_t push(TYPEID target, TAddress destination, TAddress from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+     uint8_t unit = MODBUSIP_UNIT); template <typename TYPEID> uint16_t pull(TYPEID target, TAddress from, TAddress destination, uint16_t
+     registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   */
   // Legacy API
   bool Hregs(uint16_t offset, uint16_t* value, uint16_t registerCount = 1) { return this->Reg(HREG(offset), value, registerCount); }
@@ -77,44 +76,60 @@ public:
   bool removeOnGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
   bool removeOnSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
 
-  template <typename TYPEID> uint16_t writeCoil(TYPEID target, uint16_t offset, bool value, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t writeCoil(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t writeCoil(TYPEID target, uint16_t offset, bool value, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t readCoil(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
-  template <typename TYPEID> uint16_t writeHreg(TYPEID target, uint16_t offset, uint16_t value, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t writeCoil(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                     uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t writeHreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t readCoil(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t readIsts(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t writeHreg(TYPEID target, uint16_t offset, uint16_t value, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t readHreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t writeHreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                     uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t readIreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t readIsts(TYPEID target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
+  template <typename TYPEID>
+  uint16_t readHreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
+  template <typename TYPEID>
+  uint16_t readIreg(TYPEID target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
 
   template <typename TYPEID>
-  uint16_t pushCoil(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pushCoil(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pullCoil(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullCoil(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pullIsts(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullIsts(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pushHreg(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pushHreg(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pullHreg(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullHreg(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pullIreg(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullIreg(TYPEID target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
 
   template <typename TYPEID>
-  uint16_t
-  pullHregToIreg(TYPEID target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullHregToIreg(TYPEID target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1,
+                          cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t
-  pullCoilToIsts(TYPEID target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pullCoilToIsts(TYPEID target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1,
+                          cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pushIstsToCoil(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pushIstsToCoil(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                          uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t pushIregToHreg(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t pushIregToHreg(TYPEID target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr,
+                          uint8_t unit = MODBUSIP_UNIT);
 
   template <typename TYPEID>
   uint16_t readFileRec(TYPEID slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction = nullptr,
@@ -124,10 +139,11 @@ public:
                         uint8_t unit = MODBUSIP_UNIT);
 
   template <typename TYPEID>
-  uint16_t maskHreg(TYPEID slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t maskHreg(TYPEID slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction = nullptr,
+                    uint8_t unit = MODBUSIP_UNIT);
   template <typename TYPEID>
-  uint16_t readWriteHreg(TYPEID slaveId, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset, uint16_t* writeValue,
-                         uint16_t writeRegisterCount, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
+  uint16_t readWriteHreg(TYPEID slaveId, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
+                         uint16_t* writeValue, uint16_t writeRegisterCount, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
 
   template <typename TYPEID>
   uint16_t rawRequest(TYPEID target, uint8_t* data, uint16_t len, cbTransaction callbackFunction = nullptr, uint8_t unit = MODBUSIP_UNIT);
@@ -229,7 +245,9 @@ template <class Transport> bool ModbusAPI<Transport>::addHreg(uint16_t offset, u
 }
 template <class Transport> bool ModbusAPI<Transport>::Hreg(uint16_t offset, uint16_t value) { return this->Reg(HREG(offset), value); }
 template <class Transport> uint16_t ModbusAPI<Transport>::Hreg(uint16_t offset) { return this->Reg(HREG(offset)); }
-template <class Transport> bool ModbusAPI<Transport>::removeHreg(uint16_t offset, uint16_t registerCount) { return this->removeReg(HREG(offset), registerCount); }
+template <class Transport> bool ModbusAPI<Transport>::removeHreg(uint16_t offset, uint16_t registerCount) {
+  return this->removeReg(HREG(offset), registerCount);
+}
 template <class Transport> bool ModbusAPI<Transport>::addCoil(uint16_t offset, bool value, uint16_t registerCount) {
   return this->addReg(COIL(offset), COIL_VAL(value), registerCount);
 }
@@ -245,17 +263,39 @@ template <class Transport> bool ModbusAPI<Transport>::Ireg(uint16_t offset, uint
 template <class Transport> bool ModbusAPI<Transport>::Coil(uint16_t offset) { return COIL_BOOL(this->Reg(COIL(offset))); }
 template <class Transport> bool ModbusAPI<Transport>::Ists(uint16_t offset) { return ISTS_BOOL(this->Reg(ISTS(offset))); }
 template <class Transport> uint16_t ModbusAPI<Transport>::Ireg(uint16_t offset) { return this->Reg(IREG(offset)); }
-template <class Transport> bool ModbusAPI<Transport>::removeCoil(uint16_t offset, uint16_t registerCount) { return this->removeReg(COIL(offset), registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::removeIsts(uint16_t offset, uint16_t registerCount) { return this->removeReg(ISTS(offset), registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::removeIreg(uint16_t offset, uint16_t registerCount) { return this->removeReg(IREG(offset), registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onGetCoil(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onGet(COIL(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onSetCoil(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onSet(COIL(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onGetHreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onGet(HREG(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onSetHreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onSet(HREG(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onGetIsts(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onGet(ISTS(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onSetIsts(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onSet(ISTS(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onGetIreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onGet(IREG(offset), callbackFunction, registerCount); }
-template <class Transport> bool ModbusAPI<Transport>::onSetIreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) { return this->onSet(IREG(offset), callbackFunction, registerCount); }
+template <class Transport> bool ModbusAPI<Transport>::removeCoil(uint16_t offset, uint16_t registerCount) {
+  return this->removeReg(COIL(offset), registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::removeIsts(uint16_t offset, uint16_t registerCount) {
+  return this->removeReg(ISTS(offset), registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::removeIreg(uint16_t offset, uint16_t registerCount) {
+  return this->removeReg(IREG(offset), registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onGetCoil(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onGet(COIL(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onSetCoil(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onSet(COIL(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onGetHreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onGet(HREG(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onSetHreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onSet(HREG(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onGetIsts(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onGet(ISTS(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onSetIsts(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onSet(ISTS(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onGetIreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onGet(IREG(offset), callbackFunction, registerCount);
+}
+template <class Transport> bool ModbusAPI<Transport>::onSetIreg(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
+  return this->onSet(IREG(offset), callbackFunction, registerCount);
+}
 template <class Transport> bool ModbusAPI<Transport>::removeOnGetCoil(uint16_t offset, cbModbus callbackFunction, uint16_t registerCount) {
   return this->removeOnGet(COIL(offset), callbackFunction, registerCount);
 }
@@ -282,22 +322,24 @@ template <class Transport> bool ModbusAPI<Transport>::removeOnSetIreg(uint16_t o
 }
 template <class Transport>
 template <typename TYPEID>
-uint16_t ModbusAPI<Transport>::readFileRec(TYPEID slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction, uint8_t unit) {
+uint16_t ModbusAPI<Transport>::readFileRec(TYPEID slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data,
+                                           cbTransaction callbackFunction, uint8_t unit) {
   if (startRec > 0x270F) return 0;
   if (!this->readSlaveFile(&fileNum, &startRec, &len, 1, Modbus::FC_READ_FILE_REC)) return 0;
   return this->send(slaveId, HREG(0), callbackFunction, unit, data); // HREG(0) - just dummy value
 };
 template <class Transport>
 template <typename TYPEID>
-uint16_t
-ModbusAPI<Transport>::writeFileRec(TYPEID slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction, uint8_t unit) {
+uint16_t ModbusAPI<Transport>::writeFileRec(TYPEID slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data,
+                                            cbTransaction callbackFunction, uint8_t unit) {
   if (startRec > 0x270F) return 0;
   if (!this->writeSlaveFile(&fileNum, &startRec, &len, 1, Modbus::FC_WRITE_FILE_REC, data)) return 0;
   return this->send(slaveId, HREG(0), callbackFunction, unit); // HREG(0) - just dummy value
 };
 template <class Transport>
 template <typename TYPEID>
-uint16_t ModbusAPI<Transport>::maskHreg(TYPEID slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction, uint8_t unit) {
+uint16_t
+ModbusAPI<Transport>::maskHreg(TYPEID slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction, uint8_t unit) {
   free(this->_frame);
   this->_len = 7;
   this->_frame = (uint8_t*)malloc(this->_len);
@@ -313,10 +355,13 @@ uint16_t ModbusAPI<Transport>::maskHreg(TYPEID slaveId, uint16_t offset, uint16_
 
 template <class Transport>
 template <typename TYPEID>
-uint16_t ModbusAPI<Transport>::readWriteHreg(TYPEID target, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
-                                     uint16_t* writeValue, uint16_t writeRegisterCount, cbTransaction callbackFunction, uint8_t unit) {
+uint16_t
+ModbusAPI<Transport>::readWriteHreg(TYPEID target, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
+                                    uint16_t* writeValue, uint16_t writeRegisterCount, cbTransaction callbackFunction, uint8_t unit) {
   const uint8_t headerLength = 10;
-  if (readRegisterCount < 0x0001 || readRegisterCount > MODBUS_MAX_WORDS || writeRegisterCount < 0x0001 || writeRegisterCount > 0X0079 || !readValue || !writeValue) return 0;
+  if (readRegisterCount < 0x0001 || readRegisterCount > MODBUS_MAX_WORDS || writeRegisterCount < 0x0001 || writeRegisterCount > 0X0079 ||
+      !readValue || !writeValue)
+    return 0;
 
   free(this->_frame);
   this->_len = headerLength + 2 * writeRegisterCount;
@@ -355,7 +400,9 @@ uint16_t ModbusAPI<Transport>::rawRequest(TYPEID target, uint8_t* data, uint16_t
   return this->send(target, HREG(0), callbackFunction, unit);
 };
 
-template <class Transport> template <typename TYPEID> uint16_t ModbusAPI<Transport>::rawResponse(TYPEID target, uint8_t* data, uint16_t len, uint8_t unit) {
+template <class Transport>
+template <typename TYPEID>
+uint16_t ModbusAPI<Transport>::rawResponse(TYPEID target, uint8_t* data, uint16_t len, uint8_t unit) {
   free(this->_frame);
   this->_frame = (uint8_t*)malloc(len);
   if (!this->_frame) return 0;

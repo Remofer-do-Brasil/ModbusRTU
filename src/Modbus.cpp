@@ -67,12 +67,10 @@ uint16_t Modbus::Reg(TAddress address) {
   if (reg) {
     if (cbEnabled) {
       return callback(reg, reg->value, TCallback::ON_GET);
-    } 
-      return reg->value;
-    
-  } 
-    return 0;
-  
+    }
+    return reg->value;
+  }
+  return 0;
 }
 
 bool Modbus::removeReg(TAddress address, uint16_t registerCount) {

@@ -1,14 +1,16 @@
 // Copyright (C) 2019-2022 Alexander Emelianov. See LICENSE.txt.
-#pragma once
+
+#ifndef MODBUS_RTU_PICO_H
+#define MODBUS_RTU_PICO_H
 
 #include "Modbus.h"
-#include "hardware/uart.h"
+#include <hardware/uart.h>
 
 struct ModbusUartConfig {
-  uart_inst_t* uart;
-  unsigned txPin;
-  unsigned rxPin;
-  uint32_t baud;
+  uart_inst_t* uart{};
+  unsigned txPin{};
+  unsigned rxPin{};
+  uint32_t baud{};
   uart_parity_t parity = UART_PARITY_EVEN; // NONE selects two stop bits
   int directionPin = -1;                   // Optional RS-485 DE or tied DE and /RE
   bool transmitLevel = true;
@@ -25,27 +27,41 @@ public:
   bool begin(const ModbusUartConfig& config);
   void task();
   void client() {
-    if (!address_) clientMode_ = true;
+    if (!address_) {
+      clientMode_ = true;
+    }
   }
   bool server(uint8_t id) {
-    if (clientMode_ || !id || id > 247) return false;
+    if (clientMode_ || !id || id > 247) {
+      return false;
+    }
     address_ = id;
     return true;
   }
-  uint8_t server() const { return address_; }
+  [[nodiscard]] uint8_t server() const { return address_; }
   uint32_t eventSource() override { return source_; }
 
   bool Hregs(uint16_t offset, uint16_t* value, uint16_t registerCount = 1) { return this->Reg(HREG(offset), value, registerCount); }
   bool Coils(uint16_t offset, bool* value, uint16_t registerCount = 1) {
-    if (!value || uint32_t(offset) + registerCount > 65536) return false;
-    for (unsigned i = 0; i < registerCount; ++i)
-      if (!Coil(offset + i, value[i])) return false;
+    if (!value || static_cast<uint32_t>(offset) + registerCount > 65536) {
+      return false;
+    }
+    for (unsigned i = 0; i < registerCount; ++i) {
+      if (!Coil(offset + i, value[i])) {
+        return false;
+      }
+    }
     return true;
   }
   bool Istss(uint16_t offset, bool* value, uint16_t registerCount = 1) {
-    if (!value || uint32_t(offset) + registerCount > 65536) return false;
-    for (unsigned i = 0; i < registerCount; ++i)
-      if (!Ists(offset + i, value[i])) return false;
+    if (!value || static_cast<uint32_t>(offset) + registerCount > 65536) {
+      return false;
+    }
+    for (unsigned i = 0; i < registerCount; ++i) {
+      if (!Ists(offset + i, value[i])) {
+        return false;
+      }
+    }
     return true;
   }
   bool Iregs(uint16_t offset, uint16_t* value, uint16_t registerCount = 1) { return this->Reg(IREG(offset), value, registerCount); }
@@ -70,32 +86,32 @@ public:
   bool removeIreg(uint16_t offset, uint16_t registerCount = 1);
   bool removeHreg(uint16_t offset, uint16_t registerCount = 1);
 
-  bool onGetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onSetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onGetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onSetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onGetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onSetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool onSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetCoil(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetCoil(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetHreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetHreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetIsts(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetIsts(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onGetIreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool onSetIreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
 
-  bool removeOnGetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnSetCoil(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnGetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnSetHreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnGetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnSetIsts(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnGetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
-  bool removeOnSetIreg(uint16_t offset, cbModbus callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetCoil(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetCoil(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetHreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetHreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetIsts(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetIsts(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnGetIreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
+  bool removeOnSetIreg(uint16_t offset, const cbModbus& callbackFunction = nullptr, uint16_t registerCount = 1);
 
-  uint16_t writeCoil(uint8_t target, uint16_t offset, bool value, cbTransaction callbackFunction = nullptr);
-  uint16_t writeCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t readCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t value, cbTransaction callbackFunction = nullptr);
-  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t readIsts(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t readHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t readIreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t writeCoil(uint8_t target, uint16_t offset, bool value, const cbTransaction& callbackFunction = nullptr);
+  uint16_t writeCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
+  uint16_t readCoil(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
+  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t value, const cbTransaction& callbackFunction = nullptr);
+  uint16_t writeHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
+  uint16_t readIsts(uint8_t target, uint16_t offset, bool* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
+  uint16_t readHreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
+  uint16_t readIreg(uint8_t target, uint16_t offset, uint16_t* value, uint16_t registerCount = 1, const cbTransaction& callbackFunction = nullptr);
 
   uint16_t pushCoil(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
   uint16_t pullCoil(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
@@ -104,10 +120,8 @@ public:
   uint16_t pullHreg(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
   uint16_t pullIreg(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
 
-  uint16_t
-  pullHregToIreg(uint8_t target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
-  uint16_t
-  pullCoilToIsts(uint8_t target, uint16_t offset, uint16_t startRegister, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullHregToIreg(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
+  uint16_t pullCoilToIsts(uint8_t target, uint16_t from, uint16_t destination, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
   uint16_t pushIstsToCoil(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
   uint16_t pushIregToHreg(uint8_t target, uint16_t destination, uint16_t from, uint16_t registerCount = 1, cbTransaction callbackFunction = nullptr);
 
@@ -115,11 +129,11 @@ public:
   uint16_t writeFileRec(uint8_t slaveId, uint16_t fileNum, uint16_t startRec, uint16_t len, uint8_t* data, cbTransaction callbackFunction = nullptr);
 
   uint16_t maskHreg(uint8_t slaveId, uint16_t offset, uint16_t andMask, uint16_t orMask, cbTransaction callbackFunction = nullptr);
-  uint16_t readWriteHreg(uint8_t slaveId, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
+  uint16_t readWriteHreg(uint8_t target, uint16_t readOffset, uint16_t* readValue, uint16_t readRegisterCount, uint16_t writeOffset,
                          uint16_t* writeValue, uint16_t writeRegisterCount, cbTransaction callbackFunction = nullptr);
 
-  uint16_t rawRequest(uint8_t target, uint8_t* data, uint16_t len, cbTransaction callbackFunction = nullptr);
-  uint16_t rawResponse(uint8_t target, uint8_t* data, uint16_t len);
+  uint16_t rawRequest(uint8_t target, const uint8_t* data, uint16_t len, cbTransaction callbackFunction = nullptr);
+  uint16_t rawResponse(uint8_t target, const uint8_t* data, uint16_t len);
   uint16_t errorResponse(uint8_t target, Modbus::FunctionCode functionCode, Modbus::ResultCode exceptionCode);
 
   // Deprecated misspellings retained for source compatibility.
@@ -131,7 +145,7 @@ public:
 private:
   uint16_t send(uint8_t id, TAddress reg, cbTransaction callback, uint8_t* output = nullptr, bool waitResponse = true);
 
-  void setDirection(bool transmitting);
+  void setDirection(bool transmitting) const;
   void transmit(uint8_t id);
   void processFrame();
   void finishTransaction(ResultCode result);
@@ -157,3 +171,5 @@ private:
   size_t requestSize_ = 0;
   TAddress register_{};
 };
+
+#endif // MODBUS_RTU_PICO_H
